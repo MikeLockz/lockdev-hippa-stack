@@ -1,0 +1,4 @@
+name: lockdev-hippa-iac
+description: HIPAA compliant infrastructure
+runtime: python
+main: __main__.py
