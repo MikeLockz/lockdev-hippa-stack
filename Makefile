@@ -151,11 +151,7 @@ install-security-tools: install-python ## Install security scanning tools (Safet
 	@if ! command -v trivy >/dev/null 2>&1; then \
 		echo "Installing Trivy for container/filesystem vulnerability scanning..."; \
 		if [ "$(UNAME_S)" = "Darwin" ]; then \
-			if [ "$(UNAME_M)" = "arm64" ]; then \
-				arch -arm64 brew install trivy; \
-			else \
-				brew install trivy; \
-			fi; \
+			brew install trivy; \
 		elif [ "$(UNAME_S)" = "Linux" ]; then \
 			curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin; \
 		else \
