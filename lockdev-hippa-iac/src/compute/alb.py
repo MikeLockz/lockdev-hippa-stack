@@ -143,28 +143,11 @@ def create_application_load_balancer(
         }
     )
     
-    # Create HTTPS listener (redirect HTTP to HTTPS)
-    https_listener = aws.lb.Listener(
-        "hipaa-https-listener",
-        load_balancer_arn=alb.arn,
-        port=443,
-        protocol="HTTPS",
-        ssl_policy="ELBSecurityPolicy-TLS-1-2-2017-01",
-        certificate_arn="arn:aws:acm:us-east-1:123456789012:certificate/your-cert-id",  # Replace with actual cert
-        default_actions=[
-            aws.lb.ListenerDefaultActionArgs(
-                type="forward",
-                target_group_arn=target_group.arn
-            )
-        ],
-        tags={
-            "Name": "HIPAA-HTTPS-Listener",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
-    )
+    # Note: HTTPS listener requires valid SSL certificate
+    # Can be added later with: aws acm request-certificate
+    # https_listener = aws.lb.Listener(...)
     
-    # Create HTTP listener (redirect to HTTPS)
+    # Create HTTP listener (forward to target group)
     http_listener = aws.lb.Listener(
         "hipaa-http-listener",
         load_balancer_arn=alb.arn,
@@ -172,12 +155,8 @@ def create_application_load_balancer(
         protocol="HTTP",
         default_actions=[
             aws.lb.ListenerDefaultActionArgs(
-                type="redirect",
-                redirect=aws.lb.ListenerDefaultActionRedirectArgs(
-                    port="443",
-                    protocol="HTTPS",
-                    status_code="HTTP_301"
-                )
+                type="forward",
+                target_group_arn=target_group.arn
             )
         ],
         tags={
@@ -190,7 +169,6 @@ def create_application_load_balancer(
     return {
         "alb": alb,
         "target_group": target_group,
-        "https_listener": https_listener,
         "http_listener": http_listener
     }
 

@@ -38,6 +38,7 @@ def create_ecs_task_definition(
 ) -> aws.ecs.TaskDefinition:
     """Create ECS task definition for the FastAPI application."""
     config = pulumi.Config()
+    account_id = aws.get_caller_identity().account_id
     
     # Container definition
     container_definitions = pulumi.Output.all(
@@ -75,7 +76,7 @@ def create_ecs_task_definition(
             "secrets": [
                 {
                     "name": "JWT_SECRET",
-                    "valueFrom": f"arn:aws:ssm:us-east-1:123456789012:parameter/hipaa-app/jwt-secret"
+                    "valueFrom": f"arn:aws:ssm:us-east-1:{account_id}:parameter/hipaa-app/jwt-secret"
                 }
             ],
             "logConfiguration": {

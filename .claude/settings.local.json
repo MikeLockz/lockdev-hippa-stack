@@ -58,7 +58,9 @@
       "Bash(gh workflow:*)",
       "Bash(gh repo view:*)",
       "Bash(gh api:*)",
-      "Bash(git rebase:*)"
+      "Bash(git rebase:*)",
+      "Bash(gh run view:*)",
+      "Bash(aws rds describe-db-instances:*)"
     ],
     "deny": []
   }
