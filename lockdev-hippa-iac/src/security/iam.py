@@ -123,7 +123,7 @@ def create_iam_roles():
                     "Action": "sts:AssumeRole",
                     "Effect": "Allow",
                     "Principal": {
-                        "Service": "monitoring.amazonaws.com"
+                        "Service": "events.amazonaws.com"
                     }
                 }
             ]

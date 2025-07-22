@@ -28,7 +28,7 @@ def create_rds_instance(
     # Create parameter group
     parameter_group = aws.rds.ParameterGroup(
         "hipaa-db-parameter-group",
-        family="postgres13",
+        family="postgres16",
         name="hipaa-postgres-params",
         description="Parameter group for HIPAA compliant PostgreSQL",
         parameters=[
@@ -57,7 +57,7 @@ def create_rds_instance(
         "hipaa-database",
         identifier="hipaa-postgres-db",
         engine="postgres",
-        engine_version="13.7",
+        engine_version="16.6",
         instance_class="db.t3.micro",
         allocated_storage=20,
         max_allocated_storage=100,

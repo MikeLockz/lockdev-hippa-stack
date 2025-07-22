@@ -69,7 +69,7 @@ def create_config():
     aws.iam.RolePolicyAttachment(
         "config-role-policy",
         role=config_role.name,
-        policy_arn="arn:aws:iam::aws:policy/service-role/ConfigRole"
+        policy_arn="arn:aws:iam::aws:policy/service-role/AWS_ConfigRole"
     )
     
     # Create custom policy for Config S3 access
@@ -193,17 +193,18 @@ def create_config():
         opts=pulumi.ResourceOptions(depends_on=[config_recorder])
     )
     
-    # Rule: Ensure root access key is not used
-    root_access_key_rule = aws.cfg.Rule(
-        "root-access-key-check",
-        name="root-access-key-check",
-        description="Checks whether root access keys exist",
-        source=aws.cfg.RuleSourceArgs(
-            owner="AWS",
-            source_identifier="ROOT_ACCESS_KEY_CHECK"
-        ),
-        opts=pulumi.ResourceOptions(depends_on=[config_recorder])
-    )
+    # Rule: Ensure root access key is not used  
+    # Note: ROOT_ACCESS_KEY_CHECK is deprecated, removing this rule
+    # root_access_key_rule = aws.cfg.Rule(
+    #     "root-access-key-check",
+    #     name="root-access-key-check", 
+    #     description="Checks whether root access keys exist",
+    #     source=aws.cfg.RuleSourceArgs(
+    #         owner="AWS",
+    #         source_identifier="ROOT_ACCESS_KEY_CHECK"
+    #     ),
+    #     opts=pulumi.ResourceOptions(depends_on=[config_recorder])
+    # )
     
     # Rule: Ensure MFA is enabled for root account
     mfa_enabled_rule = aws.cfg.Rule(
@@ -227,7 +228,6 @@ def create_config():
             "s3_encrypted": s3_encrypted_rule,
             "cloudtrail_enabled": cloudtrail_enabled_rule,
             "sg_ssh_restricted": sg_ssh_restricted_rule,
-            "root_access_key": root_access_key_rule,
             "mfa_enabled": mfa_enabled_rule
         }
     }

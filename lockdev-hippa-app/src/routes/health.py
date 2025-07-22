@@ -59,7 +59,8 @@ async def readiness_check():
         db = await db_gen.__anext__()
         
         # Simple query to check database connectivity
-        result = await db.execute("SELECT 1")
+        from sqlalchemy import text
+        result = await db.execute(text("SELECT 1"))
         if result:
             services["database"] = {
                 "status": "healthy",

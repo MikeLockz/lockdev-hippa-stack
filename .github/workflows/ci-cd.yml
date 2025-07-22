@@ -2,12 +2,12 @@ name: HIPAA App CI/CD
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
     paths:
       - 'lockdev-hippa-app/**'
       - '.github/workflows/ci-cd.yml'
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
     paths:
       - 'lockdev-hippa-app/**'
       - '.github/workflows/ci-cd.yml'
@@ -26,7 +26,7 @@ jobs:
     
     services:
       postgres:
-        image: postgres:15
+        image: postgres:16
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test_db
@@ -74,6 +74,19 @@ jobs:
           echo "Using cached dependencies"
         fi
 
+    - name: Run security checks
+      working-directory: lockdev-hippa-app
+      run: |
+        poetry run bandit -r src/
+        poetry run safety check
+
+    - name: Run linting
+      working-directory: lockdev-hippa-app
+      run: |
+        poetry run black --check src/
+        poetry run flake8 src/
+        poetry run mypy src/
+
     - name: Run tests
       working-directory: lockdev-hippa-app
       env:
@@ -90,94 +103,12 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        cache: 'pip'
-
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: latest
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-        installer-parallel: true
-
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v4
-      with:
-        path: lockdev-hippa-app/.venv
-        key: venv-${{ runner.os }}-${{ hashFiles('lockdev-hippa-app/poetry.lock') }}
-        restore-keys: |
-          venv-${{ runner.os }}-
-
-    - name: Install dependencies
-      working-directory: lockdev-hippa-app
-      run: |
-        if [ "${{ steps.cached-poetry-dependencies.outputs.cache-hit }}" != "true" ]; then
-          poetry install --no-interaction --only=main,dev
-        else
-          echo "Using cached dependencies"
-        fi
-
-    - name: Run linting
-      working-directory: lockdev-hippa-app
-      run: |
-        poetry run black --check src/
-        poetry run flake8 src/
-        poetry run mypy src/
-
   security-scan:
     runs-on: ubuntu-latest
+    needs: test
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        cache: 'pip'
-
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: latest
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-        installer-parallel: true
-
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v4
-      with:
-        path: lockdev-hippa-app/.venv
-        key: venv-${{ runner.os }}-${{ hashFiles('lockdev-hippa-app/poetry.lock') }}
-        restore-keys: |
-          venv-${{ runner.os }}-
-
-    - name: Install dependencies
-      working-directory: lockdev-hippa-app
-      run: |
-        if [ "${{ steps.cached-poetry-dependencies.outputs.cache-hit }}" != "true" ]; then
-          poetry install --no-interaction --only=main,dev
-        else
-          echo "Using cached dependencies"
-        fi
-
-    - name: Run security checks
-      working-directory: lockdev-hippa-app
-      run: |
-        poetry run bandit -r src/
-        poetry run safety check
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
@@ -194,7 +125,7 @@ jobs:
 
   build-and-deploy:
     runs-on: ubuntu-latest
-    needs: [test, lint, security-scan]
+    needs: [test, security-scan]
     if: github.ref == 'refs/heads/main'
     
     steps:
@@ -230,7 +161,6 @@ jobs:
           --tag $ECR_REGISTRY/$ECR_REPOSITORY:latest \
           --push \
           .
-        
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: Update ECS service

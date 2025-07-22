@@ -177,7 +177,7 @@ def create_cloudtrail():
         include_global_service_events=True,
         is_multi_region_trail=True,
         enable_logging=True,
-        cloud_watch_logs_group_arn=cloudtrail_log_group.arn,
+        cloud_watch_logs_group_arn=cloudtrail_log_group.arn.apply(lambda arn: f"{arn}:*"),
         cloud_watch_logs_role_arn=cloudtrail_role.arn,
         event_selectors=[
             aws.cloudtrail.TrailEventSelectorArgs(
@@ -186,7 +186,7 @@ def create_cloudtrail():
                 data_resources=[
                     aws.cloudtrail.TrailEventSelectorDataResourceArgs(
                         type="AWS::S3::Object",
-                        values=["arn:aws:s3:::*/*"]
+                        values=["arn:aws:s3"]
                     )
                 ]
             )

@@ -20,7 +20,7 @@ help: ## Show this help message
 install: install-prerequisites install-deps setup ## Install all prerequisites and dependencies
 
 # Install system prerequisites
-install-prerequisites: install-python install-poetry install-pulumi install-aws-cli install-docker ## Install all system prerequisites
+install-prerequisites: install-python install-poetry install-pulumi install-aws-cli install-docker install-security-tools ## Install all system prerequisites
 
 # Detect OS for platform-specific installations
 UNAME_S := $(shell uname -s)
@@ -130,6 +130,53 @@ install-docker: ## Install Docker
 		echo "Docker found: $$(docker --version)"; \
 	fi
 
+install-security-tools: install-python ## Install security scanning tools (Safety and Trivy)
+	@echo "Installing security scanning tools..."
+	@echo "Checking Safety installation..."
+	@if ! command -v safety >/dev/null 2>&1 && ! python3 -c "import safety" >/dev/null 2>&1; then \
+		echo "Installing Safety for dependency vulnerability scanning..."; \
+		if [ "$(UNAME_S)" = "Darwin" ]; then \
+			if ! command -v pipx >/dev/null 2>&1; then \
+				echo "Installing pipx first..."; \
+				if [ "$(UNAME_M)" = "arm64" ]; then \
+					arch -arm64 brew install pipx; \
+				else \
+					brew install pipx; \
+				fi; \
+			fi; \
+			pipx install safety; \
+		else \
+			pip3 install --user safety; \
+		fi; \
+	else \
+		if command -v safety >/dev/null 2>&1; then \
+			echo "Safety found: $$(safety --version)"; \
+		else \
+			echo "Safety found: $$(python3 -c 'import safety; print(safety.__version__)')"; \
+		fi; \
+	fi
+	@echo "Checking Trivy installation..."
+	@if ! command -v trivy >/dev/null 2>&1; then \
+		echo "Installing Trivy for container/filesystem vulnerability scanning..."; \
+		if [ "$(UNAME_S)" = "Darwin" ]; then \
+			if command -v brew >/dev/null 2>&1; then \
+				brew install aquasecurity/trivy/trivy; \
+			else \
+				echo "Installing Trivy using curl..."; \
+				curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin; \
+			fi; \
+		elif [ "$(UNAME_S)" = "Linux" ]; then \
+			echo "Installing Trivy using curl..."; \
+			curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin; \
+		else \
+			echo "Please install Trivy manually for your platform"; \
+			echo "Visit: https://github.com/aquasecurity/trivy"; \
+		fi; \
+	else \
+		echo "Trivy found: $$(trivy --version | head -1)"; \
+	fi
+	@echo "✅ Security tools installation complete"
+
 # Install project dependencies
 install-deps: install-iac-deps install-app-deps ## Install all project dependencies
 
@@ -194,6 +241,8 @@ verify-tools: ## Verify all required tools are installed
 	@echo -n "AWS CLI: "; aws --version || echo "❌ MISSING"
 	@echo -n "Docker: "; docker --version || echo "❌ MISSING"
 	@echo -n "Git: "; git --version || echo "❌ MISSING"
+	@echo -n "Safety: "; (command -v safety >/dev/null 2>&1 && safety --version) || (python3 -c "import safety; print('v' + safety.__version__)" 2>/dev/null) || echo "❌ MISSING (install with: make install-security-tools)"
+	@echo -n "Trivy: "; trivy --version 2>/dev/null | head -1 || echo "❌ MISSING (install with: make install-security-tools)"
 
 verify-deps: ## Verify project dependencies are installed
 	@echo "Verifying project dependencies..."
@@ -226,9 +275,58 @@ dev-iac: ## Start infrastructure development environment
 	@echo "Starting infrastructure development..."
 	@cd lockdev-hippa-iac && poetry shell
 
-dev-app: ## Start application development environment  
-	@echo "Starting application development..."
+dev-app: ## Start application development environment with containers
+	@echo "Starting application development environment..."
+	@echo "Checking if containers are already running..."
+	@cd lockdev-hippa-app && \
+	if docker-compose ps --services --filter "status=running" | grep -q "db\|redis\|app"; then \
+		echo "✅ Containers already running"; \
+		docker-compose ps; \
+	else \
+		echo "🚀 Starting containerized development environment..."; \
+		docker-compose up -d; \
+		echo ""; \
+		echo "Waiting for services to be ready..."; \
+		sleep 5; \
+		echo ""; \
+		echo "✅ Development environment ready!"; \
+		echo ""; \
+		echo "📱 Application: http://localhost:8000"; \
+		echo "📚 API Docs: http://localhost:8000/docs"; \
+		echo "🔍 Health Check: http://localhost:8000/health/"; \
+		echo ""; \
+		echo "View logs: make dev-logs"; \
+		echo "Stop: make dev-stop"; \
+	fi
+
+dev-app-local: ## Start application locally without containers (requires local PostgreSQL)
+	@echo "Starting application locally..."
 	@cd lockdev-hippa-app && poetry run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+
+dev-logs: ## View development environment logs
+	@echo "Viewing development logs..."
+	@cd lockdev-hippa-app && docker-compose logs -f
+
+dev-stop: ## Stop development environment
+	@echo "Stopping development environment..."
+	@cd lockdev-hippa-app && docker-compose down
+	@echo "✅ Development environment stopped"
+
+dev-status: ## Check development environment status
+	@echo "Development environment status:"
+	@cd lockdev-hippa-app && \
+	if docker-compose ps --services --filter "status=running" | grep -q "."; then \
+		echo "✅ Containers running:"; \
+		docker-compose ps; \
+		echo ""; \
+		echo "🔗 Quick links:"; \
+		echo "  Application: http://localhost:8000"; \
+		echo "  API Docs: http://localhost:8000/docs"; \
+		echo "  Health: http://localhost:8000/health/"; \
+	else \
+		echo "❌ No containers running"; \
+		echo "Start with: make dev-app"; \
+	fi
 
 # Testing targets
 test: test-iac test-app ## Run all tests
@@ -285,27 +383,66 @@ clean-cache: ## Clean build caches
 
 # CI/CD targets
 ci-setup: ## Setup GitHub Actions secrets and environment
-	@echo "Setting up GitHub Actions CI/CD..."
+	@echo "🚀 Setting up GitHub Actions CI/CD..."
 	@echo ""
-	@echo "Required GitHub Secrets:"
-	@echo "========================"
-	@echo "Repository Secrets (Settings > Secrets and variables > Actions):"
-	@echo "  - PULUMI_ACCESS_TOKEN: Your Pulumi Cloud access token"
-	@echo "  - AWS_ACCOUNT_ID: Your AWS account ID"
-	@echo "  - AWS_ADMIN_ACCESS_KEY_ID: Admin user for IAM bootstrap"
-	@echo "  - AWS_ADMIN_SECRET_ACCESS_KEY: Admin user secret"
-	@echo "  - PULUMI_AWS_ACCESS_KEY_ID: Limited IAM user for deployments"
-	@echo "  - PULUMI_AWS_SECRET_ACCESS_KEY: Limited IAM user secret"
+	@if ! command -v gh >/dev/null 2>&1; then \
+		echo "❌ GitHub CLI (gh) is not installed."; \
+		echo "Install it with: brew install gh"; \
+		echo "Then run: gh auth login"; \
+		exit 1; \
+	fi
+	@if ! gh auth status >/dev/null 2>&1; then \
+		echo "❌ Not logged into GitHub CLI."; \
+		echo "Run: gh auth login"; \
+		exit 1; \
+	fi
+	@echo "✅ GitHub CLI is ready"
 	@echo ""
-	@echo "Environment Protection Rules:"
-	@echo "  - Create environments: dev, staging, prod, dev-bootstrap, staging-bootstrap, prod-bootstrap"
-	@echo "  - Add required reviewers for prod environments"
+	@echo "📁 Repository: $$(gh repo view --json owner,name -q '.owner.login + "/" + .name')"
 	@echo ""
-	@echo "To get your AWS Account ID:"
-	@echo "  aws sts get-caller-identity --query 'Account' --output text"
+	@echo "🔐 Setting up GitHub repository secrets..."
+	@AWS_ACCOUNT_ID=$$(aws sts get-caller-identity --query 'Account' --output text); \
+	PULUMI_TOKEN="$$PULUMI_ACCESS_TOKEN"; \
+	AWS_ACCESS_KEY=$$(aws configure get aws_access_key_id || echo "$$AWS_ACCESS_KEY_ID"); \
+	AWS_SECRET_KEY=$$(aws configure get aws_secret_access_key || echo "$$AWS_SECRET_ACCESS_KEY"); \
+	if [ -z "$$PULUMI_TOKEN" ]; then \
+		echo "❌ PULUMI_ACCESS_TOKEN not found in environment"; \
+		echo "Get your token from: https://app.pulumi.com/account/tokens"; \
+		echo "Then export PULUMI_ACCESS_TOKEN=your-token"; \
+		exit 1; \
+	fi; \
+	if [ -z "$$AWS_ACCESS_KEY" ] || [ -z "$$AWS_SECRET_KEY" ]; then \
+		echo "❌ AWS credentials not found"; \
+		echo "Run: aws configure"; \
+		exit 1; \
+	fi; \
+	echo "📝 Setting GitHub repository secrets..."; \
+	gh secret set AWS_ACCOUNT_ID --body "$$AWS_ACCOUNT_ID" && echo "✅ Set AWS_ACCOUNT_ID"; \
+	gh secret set PULUMI_ACCESS_TOKEN --body "$$PULUMI_TOKEN" && echo "✅ Set PULUMI_ACCESS_TOKEN"; \
+	gh secret set PULUMI_AWS_ACCESS_KEY_ID --body "$$AWS_ACCESS_KEY" && echo "✅ Set PULUMI_AWS_ACCESS_KEY_ID"; \
+	gh secret set PULUMI_AWS_SECRET_ACCESS_KEY --body "$$AWS_SECRET_KEY" && echo "✅ Set PULUMI_AWS_SECRET_ACCESS_KEY"; \
+	gh secret set AWS_ADMIN_ACCESS_KEY_ID --body "$$AWS_ACCESS_KEY" && echo "✅ Set AWS_ADMIN_ACCESS_KEY_ID"; \
+	gh secret set AWS_ADMIN_SECRET_ACCESS_KEY --body "$$AWS_SECRET_KEY" && echo "✅ Set AWS_ADMIN_SECRET_ACCESS_KEY"
 	@echo ""
-	@echo "To get your Pulumi token:"
-	@echo "  https://app.pulumi.com/account/tokens"
+	@echo "🎉 GitHub secrets configured successfully!"
+	@echo ""
+	@echo "Next Steps:"
+	@echo "==========="
+	@REPO_URL=$$(gh repo view --json url -q '.url'); \
+	echo "1. Set up GitHub environments:"; \
+	echo "   - Go to: $$REPO_URL/settings/environments"; \
+	echo "   - Create environments: dev, staging, prod"; \
+	echo "   - Add protection rules for prod (require reviewers)"; \
+	echo ""; \
+	echo "2. Test the CI/CD pipeline:"; \
+	echo "   make ci-validate"; \
+	echo "   make ci-deploy-dev"; \
+	echo ""; \
+	echo "3. View your secrets:"; \
+	echo "   $$REPO_URL/settings/secrets/actions"; \
+	echo ""; \
+	echo "4. Monitor workflows:"; \
+	echo "   $$REPO_URL/actions"
 
 ci-validate: ## Validate CI/CD configuration locally
 	@echo "Validating CI/CD configuration..."
@@ -334,6 +471,27 @@ ci-deploy-dev: ## Trigger dev deployment via GitHub Actions
 	else \
 		echo "GitHub CLI not found. Install with: brew install gh"; \
 		echo "Or manually trigger at: https://github.com/your-repo/actions/workflows/infrastructure.yml"; \
+	fi
+
+ci-deploy-app: ## Deploy application only (to existing infrastructure)
+	@echo "Deploying application to existing infrastructure..."
+	@if command -v gh >/dev/null 2>&1; then \
+		echo "Pushing to main branch to trigger application deployment..."; \
+		git push origin master:main || git push origin master; \
+		echo "Application deployment triggered. Check: https://github.com/$(gh repo view --json owner,name -q '.owner.login + "/" + .name')/actions"; \
+	else \
+		echo "GitHub CLI not found. Install with: brew install gh"; \
+		echo "Or manually push to main branch to trigger deployment"; \
+	fi
+
+ci-build-app: ## Build and test application without deployment
+	@echo "Building and testing application..."
+	@if command -v gh >/dev/null 2>&1; then \
+		gh workflow run ci-cd.yml; \
+		echo "Application build triggered. Check: https://github.com/$(gh repo view --json owner,name -q '.owner.login + "/" + .name')/actions"; \
+	else \
+		echo "GitHub CLI not found. Install with: brew install gh"; \
+		echo "Or create a pull request to trigger testing"; \
 	fi
 
 ci-deploy-staging: ## Trigger staging deployment via GitHub Actions

@@ -86,41 +86,12 @@ def create_guardduty():
         }
     )
     
-    # Create IP set for known malicious IPs (empty initially)
-    guardduty_ipset = aws.guardduty.IPSet(
-        "guardduty-threat-intel-ipset",
-        activate=True,
-        detector_id=guardduty_detector.id,
-        format="TXT",
-        location="s3://guardduty-threat-intel-ipset-bucket/ipset.txt",
-        name="hipaa-threat-intel-ipset",
-        tags={
-            "Name": "HIPAA-GuardDuty-IP-Set",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
-    )
-    
-    # Create threat intel set for known malicious domains (empty initially)
-    guardduty_threatintelset = aws.guardduty.ThreatIntelSet(
-        "guardduty-threat-intel-set",
-        activate=True,
-        detector_id=guardduty_detector.id,
-        format="TXT",
-        location="s3://guardduty-threat-intel-set-bucket/threatintelset.txt",
-        name="hipaa-threat-intel-set",
-        tags={
-            "Name": "HIPAA-GuardDuty-Threat-Intel-Set",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
-    )
+    # Note: IPSet and ThreatIntelSet removed due to permission requirements
+    # and S3 bucket dependencies. Can be added later with proper setup.
     
     return {
         "guardduty_detector": guardduty_detector,
         "guardduty_sns_topic": guardduty_sns_topic,
         "guardduty_eventbridge_rule": guardduty_eventbridge_rule,
-        "guardduty_log_group": guardduty_log_group,
-        "guardduty_ipset": guardduty_ipset,
-        "guardduty_threatintelset": guardduty_threatintelset
+        "guardduty_log_group": guardduty_log_group
     }
