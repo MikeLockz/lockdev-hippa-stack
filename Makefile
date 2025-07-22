@@ -344,7 +344,7 @@ test-app: ## Run comprehensive application tests (matches CI)
 	poetry run bandit -r src/ && \
 	echo "Running pip-audit vulnerability check..." && \
 	(if command -v pip-audit >/dev/null 2>&1; then \
-		pip-audit --desc --format=text; \
+		pip-audit --desc; \
 	else \
 		echo "⚠️  pip-audit not available - install with: make install-security-tools"; \
 		false; \
@@ -398,7 +398,7 @@ test-app-security: ## Run security scans only (pip-audit and Bandit)
 	poetry run bandit -r src/ && \
 	echo "Running pip-audit vulnerability check..." && \
 	(if command -v pip-audit >/dev/null 2>&1; then \
-		pip-audit --desc --format=text; \
+		pip-audit --desc; \
 	else \
 		echo "⚠️  pip-audit not available - install with: make install-security-tools"; \
 		false; \

@@ -27,7 +27,9 @@ from .utils.database import init_database
 REQUEST_COUNT = Counter(
     "http_requests_total", "Total HTTP requests", ["method", "endpoint"]
 )
-REQUEST_DURATION = Histogram("http_request_duration_seconds", "HTTP request duration")
+REQUEST_DURATION = Histogram(
+    "http_request_duration_seconds", "HTTP request duration"
+)
 
 
 @asynccontextmanager
@@ -45,7 +47,8 @@ async def lifespan(app: FastAPI):
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.warning(
-            "Database initialization failed - " "application will run without database",
+            "Database initialization failed - "
+            "application will run without database",
             error=str(e),
         )
 
