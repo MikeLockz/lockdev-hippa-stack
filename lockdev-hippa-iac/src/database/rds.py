@@ -1,10 +1,15 @@
 """RDS PostgreSQL database for HIPAA compliance."""
 import pulumi
 import pulumi_aws as aws
-from typing import List
+from typing import List, Dict
+from pulumi import Output
 
 
-def create_rds_instance(private_subnets: List[aws.ec2.Subnet], security_group: aws.ec2.SecurityGroup) -> aws.rds.Instance:
+def create_rds_instance(
+    private_subnets: List[aws.ec2.Subnet], 
+    security_group: aws.ec2.SecurityGroup,
+    secrets_info: Dict = None
+) -> Dict:
     """Create HIPAA compliant RDS PostgreSQL instance."""
     config = pulumi.Config()
     
@@ -61,7 +66,7 @@ def create_rds_instance(private_subnets: List[aws.ec2.Subnet], security_group: a
         
         db_name="hipaa_app",
         username="postgres",
-        password=config.require_secret("db_password"),
+        password=secrets_info["db_password"] if secrets_info else config.require_secret("db_password"),
         
         vpc_security_group_ids=[security_group.id],
         db_subnet_group_name=db_subnet_group.name,
@@ -87,4 +92,9 @@ def create_rds_instance(private_subnets: List[aws.ec2.Subnet], security_group: a
         }
     )
     
-    return db_instance
+    return {
+        "db_instance": db_instance,
+        "db_subnet_group": db_subnet_group,
+        "parameter_group": parameter_group,
+        "log_group": log_group
+    }

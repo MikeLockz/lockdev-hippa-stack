@@ -33,7 +33,23 @@
       "Bash(curl:*)",
       "Bash(docker logs:*)",
       "Bash(docker stop:*)",
-      "Bash(docker rm:*)"
+      "Bash(docker rm:*)",
+      "Bash(find:*)",
+      "Bash(chmod:*)",
+      "Bash(./setup-iam-separation.sh:*)",
+      "Bash(brew install:*)",
+      "Bash(arch -arm64 brew install awscli)",
+      "Bash(aws sts:*)",
+      "Bash(./bootstrap/deploy-bootstrap.sh:*)",
+      "Bash(arch:*)",
+      "Bash(make check-deps:*)",
+      "Bash(make:*)",
+      "Bash(AWS_PROFILE=dev-root aws sts get-caller-identity)",
+      "Bash(env)",
+      "Bash(make:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git remote add:*)"
     ],
     "deny": []
   }

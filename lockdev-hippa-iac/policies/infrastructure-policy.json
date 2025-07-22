@@ -1,0 +1,110 @@
+{
+    "Version": "2012-10-17", 
+    "Statement": [
+        {
+            "Sid": "EC2FullAccess",
+            "Effect": "Allow",
+            "Action": "ec2:*",
+            "Resource": "*"
+        },
+        {
+            "Sid": "S3FullAccess", 
+            "Effect": "Allow",
+            "Action": "s3:*",
+            "Resource": "*"
+        },
+        {
+            "Sid": "RDSFullAccess",
+            "Effect": "Allow", 
+            "Action": "rds:*",
+            "Resource": "*"
+        },
+        {
+            "Sid": "ECSFullAccess",
+            "Effect": "Allow",
+            "Action": [
+                "ecs:*",
+                "ecr:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "LoadBalancerAccess",
+            "Effect": "Allow",
+            "Action": [
+                "elasticloadbalancing:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "CloudWatchAccess",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:*",
+                "logs:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "KMSAccess",
+            "Effect": "Allow",
+            "Action": [
+                "kms:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "CloudTrailAccess",
+            "Effect": "Allow",
+            "Action": [
+                "cloudtrail:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "ConfigAccess", 
+            "Effect": "Allow",
+            "Action": [
+                "config:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "GuardDutyAccess",
+            "Effect": "Allow",
+            "Action": [
+                "guardduty:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "SNSAccess",
+            "Effect": "Allow",
+            "Action": [
+                "sns:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "EventsAccess",
+            "Effect": "Allow",
+            "Action": [
+                "events:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "UseExistingRoles",
+            "Effect": "Allow",
+            "Action": [
+                "iam:GetRole",
+                "iam:ListRoles", 
+                "iam:ListAttachedRolePolicies",
+                "iam:GetRolePolicy",
+                "iam:ListRolePolicies",
+                "iam:PassRole"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

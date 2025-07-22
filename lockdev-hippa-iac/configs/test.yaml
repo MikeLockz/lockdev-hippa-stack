@@ -1,0 +1,12 @@
+# Test environment configuration
+config:
+  # Database configuration
+  lockdev-hippa-iac:db_password:
+    secure: TestPassword123!  # Use secure passwords in production
+  
+  # AWS configuration
+  aws:region: us-east-1
+  
+  # Environment-specific settings
+  environment: test
+  instance_size: t3.micro  # Smaller instance for testing

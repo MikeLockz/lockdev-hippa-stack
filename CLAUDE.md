@@ -427,17 +427,37 @@ curl https://<ALB_DNS>/api/v1/hello
 
 ### 🔧 Development Workflow
 
-#### Local Development
+#### Local Development (Containerized)
 ```bash
-# Start local environment
+# Start complete local environment with containers
 cd lockdev-hippa-app/
 docker-compose up -d
 
-# Run application locally
-poetry run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+# This starts:
+# - FastAPI application on http://localhost:8000
+# - PostgreSQL database on localhost:5432
+# - Redis cache on localhost:6379
 
-# Access locally
+# Test the application
 curl http://localhost:8000/health/
+curl http://localhost:8000/api/v1/hello
+
+# View application logs
+docker-compose logs -f app
+
+# Stop all services
+docker-compose down
+
+# Rebuild after code changes
+docker-compose up --build
+```
+
+#### Alternative: Local Python Development
+```bash
+# For development without containers (requires local PostgreSQL)
+cd lockdev-hippa-app/
+poetry install
+poetry run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 #### Testing
@@ -541,6 +561,52 @@ PULUMI_ACCESS_TOKEN=<your-pulumi-token>
 # Application Configuration
 DATABASE_URL=<database-connection-string>
 JWT_SECRET=<jwt-secret-key>
+```
+
+### AWS Secrets Manager Integration (Recommended)
+
+The infrastructure now uses AWS Secrets Manager for secure credential management:
+
+**Benefits:**
+- **Automatic password generation** (32-character secure passwords)
+- **Automatic rotation** (30-day cycle)
+- **KMS encryption** at rest
+- **No manual password configuration** required
+- **HIPAA compliant** credential storage
+
+**Usage:**
+```bash
+# Option 1: Use new Secrets Manager integration (recommended)
+# Replace __main__.py with main_with_secrets.py
+mv __main__.py __main__.py.backup
+cp src/main_with_secrets.py __main__.py
+
+# Deploy - no password configuration needed!
+pulumi up
+
+# Access secrets in application
+export DB_SECRET_ARN=$(pulumi stack output database_secret_arn)
+export JWT_SECRET_ARN=$(pulumi stack output jwt_secret_arn)
+```
+
+**Legacy Configuration (if not using Secrets Manager):**
+```bash
+# Only needed if using the original __main__.py
+pulumi config set --secret lockdev-hippa-iac:db_password "YourPassword123!"
+```
+
+**Accessing Secrets in Application:**
+```python
+import boto3
+import json
+
+# Get database credentials
+secrets_client = boto3.client('secretsmanager')
+secret = secrets_client.get_secret_value(SecretId='hipaa/dev/database/credentials')
+db_creds = json.loads(secret['SecretString'])
+
+# Use credentials
+DATABASE_URL = f"postgresql+asyncpg://{db_creds['username']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['dbname']}"
 ```
 
 ### GitHub Actions Secrets

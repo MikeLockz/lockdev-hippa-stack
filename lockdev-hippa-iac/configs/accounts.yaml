@@ -1,0 +1,60 @@
+# Multi-Account HIPAA Infrastructure Configuration
+# Configure AWS profiles and deployment settings for each account
+
+accounts:
+  dev:
+    profile: dev-root
+    region: us-east-1
+    environment: development
+    tags:
+      CostCenter: "Development"
+      Owner: "DevTeam"
+      DataClassification: "Internal"
+    
+  staging:
+    profile: staging-root
+    region: us-east-1
+    environment: staging
+    tags:
+      CostCenter: "QA"
+      Owner: "QATeam"
+      DataClassification: "Internal"
+    
+  prod-us:
+    profile: prod-us-root
+    region: us-east-1
+    environment: production
+    tags:
+      CostCenter: "Production"
+      Owner: "OpsTeam"
+      Region: "US"
+      DataClassification: "PHI"
+    
+  prod-eu:
+    profile: prod-eu-root
+    region: eu-west-1
+    environment: production
+    tags:
+      CostCenter: "Production"
+      Owner: "OpsTeam"
+      Region: "EU"
+      DataClassification: "PHI"
+
+# Global settings
+global:
+  stack_prefix: hipaa
+  pulumi_backend: pulumi.com  # or s3://your-bucket
+  confirm_destroy: true
+  
+# HIPAA-specific settings
+hipaa:
+  encrypt_all_data: true
+  enable_audit_logging: true
+  require_mfa: true
+  data_retention_days: 2555  # 7 years for HIPAA compliance
+  
+# Cost management
+cost_management:
+  enable_billing_alerts: true
+  monthly_budget_usd: 500
+  alert_threshold_percent: 80

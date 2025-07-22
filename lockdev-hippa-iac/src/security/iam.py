@@ -85,6 +85,16 @@ def create_iam_roles():
                         "kms:GenerateDataKey"
                     ],
                     "Resource": "*"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "secretsmanager:GetSecretValue",
+                        "secretsmanager:DescribeSecret"
+                    ],
+                    "Resource": [
+                        "arn:aws:secretsmanager:*:*:secret:hipaa/*"
+                    ]
                 }
             ]
         }),

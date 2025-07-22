@@ -1,0 +1,12 @@
+# Production environment configuration  
+config:
+  # Database configuration - SET THIS MANUALLY FOR PRODUCTION
+  # lockdev-hippa-iac:db_password:
+  #   secure: CHANGE_ME_IN_PRODUCTION
+  
+  # AWS configuration
+  aws:region: us-east-1
+  
+  # Environment-specific settings
+  environment: production
+  instance_size: t3.medium  # Larger instance for production

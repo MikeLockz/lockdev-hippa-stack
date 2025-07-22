@@ -1,0 +1,374 @@
+name: Infrastructure Deployment
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'lockdev-hippa-iac/**'
+      - '.github/workflows/infrastructure.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'lockdev-hippa-iac/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+      action:
+        description: 'Deployment action'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+        - preview
+        - deploy
+        - destroy
+
+env:
+  AWS_REGION: us-east-1
+  PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      action: ${{ steps.set-env.outputs.action }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set environment and action
+      id: set-env
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          echo "action=${{ github.event.inputs.action }}" >> $GITHUB_OUTPUT
+        elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          echo "environment=prod" >> $GITHUB_OUTPUT
+          echo "action=deploy" >> $GITHUB_OUTPUT
+        elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+          echo "environment=staging" >> $GITHUB_OUTPUT
+          echo "action=deploy" >> $GITHUB_OUTPUT
+        else
+          echo "environment=dev" >> $GITHUB_OUTPUT
+          echo "action=preview" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: lockdev-hippa-iac/.venv
+        key: venv-${{ runner.os }}-${{ hashFiles('lockdev-hippa-iac/poetry.lock') }}
+
+    - name: Install dependencies
+      working-directory: lockdev-hippa-iac
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-interaction --no-root
+
+    - name: Install project
+      working-directory: lockdev-hippa-iac
+      run: poetry install --no-interaction
+
+    - name: Run security checks
+      working-directory: lockdev-hippa-iac
+      run: |
+        poetry run bandit -r src/
+        poetry run safety check
+
+    - name: Run linting
+      working-directory: lockdev-hippa-iac
+      run: |
+        poetry run black --check src/
+        poetry run flake8 src/
+        poetry run mypy src/
+
+    - name: Run infrastructure tests
+      working-directory: lockdev-hippa-iac
+      run: |
+        poetry run pytest tests/ -v
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: './lockdev-hippa-iac'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run Checkov policy scan
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: lockdev-hippa-iac/
+        framework: terraform,cloudformation,dockerfile,secrets
+        output_format: sarif
+        output_file_path: checkov-results.sarif
+
+  iam-bootstrap:
+    runs-on: ubuntu-latest
+    needs: [validate, security-scan]
+    if: needs.validate.outputs.action != 'preview' && needs.validate.outputs.environment != 'dev'
+    environment: ${{ needs.validate.outputs.environment }}-bootstrap
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials (Admin for bootstrap)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ADMIN_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_ADMIN_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Install AWS CLI
+      run: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip awscliv2.zip
+        sudo ./aws/install
+
+    - name: Run IAM Bootstrap
+      working-directory: lockdev-hippa-iac
+      run: |
+        if [ -f "bootstrap/deploy-bootstrap.sh" ]; then
+          chmod +x bootstrap/deploy-bootstrap.sh
+          ./bootstrap/deploy-bootstrap.sh ${{ needs.validate.outputs.environment }}
+        else
+          echo "Bootstrap script not found, skipping IAM bootstrap"
+        fi
+
+  infrastructure-deployment:
+    runs-on: ubuntu-latest
+    needs: [validate, security-scan, iam-bootstrap]
+    if: always() && !failure() && !cancelled()
+    environment: ${{ needs.validate.outputs.environment }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: lockdev-hippa-iac/.venv
+        key: venv-${{ runner.os }}-${{ hashFiles('lockdev-hippa-iac/poetry.lock') }}
+
+    - name: Install dependencies
+      working-directory: lockdev-hippa-iac
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-interaction --no-root
+
+    - name: Install project
+      working-directory: lockdev-hippa-iac
+      run: poetry install --no-interaction
+
+    - name: Install Pulumi
+      uses: pulumi/actions@v4
+
+    - name: Configure AWS credentials (IAM separated)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.PULUMI_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.PULUMI_AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Pulumi stack
+      working-directory: lockdev-hippa-iac
+      run: |
+        # Create or select stack
+        pulumi stack select ${{ needs.validate.outputs.environment }} || pulumi stack init ${{ needs.validate.outputs.environment }}
+        
+        # Set configuration
+        pulumi config set aws:region ${{ env.AWS_REGION }}
+        pulumi config set environment ${{ needs.validate.outputs.environment }}
+        
+        # Use Secrets Manager configuration (recommended)
+        if [ -f "src/main_with_secrets.py" ]; then
+          cp __main__.py __main__.py.backup || true
+          cp src/main_with_secrets.py __main__.py
+          echo "Using Secrets Manager configuration"
+        fi
+
+    - name: Pulumi Preview
+      if: needs.validate.outputs.action == 'preview' || github.event_name == 'pull_request'
+      working-directory: lockdev-hippa-iac
+      run: |
+        poetry run pulumi preview --diff
+
+    - name: Pulumi Deploy
+      if: needs.validate.outputs.action == 'deploy'
+      working-directory: lockdev-hippa-iac
+      run: |
+        poetry run pulumi up --yes --skip-preview
+
+    - name: Pulumi Destroy
+      if: needs.validate.outputs.action == 'destroy'
+      working-directory: lockdev-hippa-iac
+      run: |
+        poetry run pulumi destroy --yes --skip-preview
+
+    - name: Export stack outputs
+      if: needs.validate.outputs.action == 'deploy'
+      working-directory: lockdev-hippa-iac
+      run: |
+        # Export key outputs for other workflows
+        echo "ECR_REPOSITORY_URL=$(pulumi stack output ecr_repository_url)" >> $GITHUB_ENV
+        echo "ALB_DNS_NAME=$(pulumi stack output alb_dns_name)" >> $GITHUB_ENV
+        echo "ECS_CLUSTER_NAME=$(pulumi stack output ecs_cluster_name)" >> $GITHUB_ENV
+        echo "ECS_SERVICE_NAME=$(pulumi stack output ecs_service_name)" >> $GITHUB_ENV
+
+    - name: Store stack outputs as artifacts
+      if: needs.validate.outputs.action == 'deploy'
+      working-directory: lockdev-hippa-iac
+      run: |
+        mkdir -p outputs
+        pulumi stack output --json > outputs/stack-outputs-${{ needs.validate.outputs.environment }}.json
+
+    - name: Upload stack outputs
+      if: needs.validate.outputs.action == 'deploy'
+      uses: actions/upload-artifact@v3
+      with:
+        name: stack-outputs-${{ needs.validate.outputs.environment }}
+        path: lockdev-hippa-iac/outputs/
+        retention-days: 30
+
+  post-deployment-verification:
+    runs-on: ubuntu-latest
+    needs: [validate, infrastructure-deployment]
+    if: needs.validate.outputs.action == 'deploy' && needs.infrastructure-deployment.result == 'success'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.PULUMI_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.PULUMI_AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Download stack outputs
+      uses: actions/download-artifact@v3
+      with:
+        name: stack-outputs-${{ needs.validate.outputs.environment }}
+        path: outputs/
+
+    - name: Verify infrastructure deployment
+      run: |
+        # Parse outputs
+        ALB_DNS=$(cat outputs/stack-outputs-${{ needs.validate.outputs.environment }}.json | jq -r '.alb_dns_name')
+        ECS_CLUSTER=$(cat outputs/stack-outputs-${{ needs.validate.outputs.environment }}.json | jq -r '.ecs_cluster_name')
+        
+        echo "Verifying infrastructure deployment..."
+        echo "ALB DNS: $ALB_DNS"
+        echo "ECS Cluster: $ECS_CLUSTER"
+        
+        # Test infrastructure components
+        echo "Testing ECS cluster..."
+        aws ecs describe-clusters --clusters $ECS_CLUSTER
+        
+        echo "Testing RDS instance..."
+        aws rds describe-db-instances --query 'DBInstances[?contains(DBInstanceIdentifier, `hipaa`)][DBInstanceIdentifier,DBInstanceStatus]'
+        
+        echo "Testing security services..."
+        aws guardduty list-detectors
+        aws cloudtrail describe-trails --query 'trailList[?contains(Name, `hipaa`)][Name,IsLogging]'
+
+    - name: Run compliance checks
+      run: |
+        echo "Running HIPAA compliance checks..."
+        
+        # Check encryption
+        echo "Checking RDS encryption..."
+        ENCRYPTED=$(aws rds describe-db-instances --query 'DBInstances[?contains(DBInstanceIdentifier, `hipaa`)].StorageEncrypted' --output text)
+        if [ "$ENCRYPTED" = "True" ]; then
+          echo "✅ RDS encryption enabled"
+        else
+          echo "❌ RDS encryption not enabled"
+          exit 1
+        fi
+        
+        # Check CloudTrail
+        echo "Checking CloudTrail logging..."
+        LOGGING=$(aws cloudtrail get-trail-status --name hipaa-cloudtrail-${{ needs.validate.outputs.environment }} --query 'IsLogging' --output text)
+        if [ "$LOGGING" = "True" ]; then
+          echo "✅ CloudTrail logging enabled"
+        else
+          echo "❌ CloudTrail logging not enabled"
+          exit 1
+        fi
+        
+        # Check GuardDuty
+        echo "Checking GuardDuty..."
+        DETECTORS=$(aws guardduty list-detectors --query 'DetectorIds' --output text)
+        if [ ! -z "$DETECTORS" ]; then
+          echo "✅ GuardDuty enabled"
+        else
+          echo "❌ GuardDuty not enabled"
+          exit 1
+        fi
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [validate, infrastructure-deployment, post-deployment-verification]
+    if: always()
+    
+    steps:
+    - name: Notify deployment status
+      run: |
+        if [ "${{ needs.infrastructure-deployment.result }}" = "success" ]; then
+          echo "🎉 Infrastructure deployment to ${{ needs.validate.outputs.environment }} successful!"
+          if [ "${{ needs.post-deployment-verification.result }}" = "success" ]; then
+            echo "✅ All compliance checks passed"
+          else
+            echo "⚠️ Compliance verification failed"
+          fi
+        else
+          echo "❌ Infrastructure deployment to ${{ needs.validate.outputs.environment }} failed"
+        fi

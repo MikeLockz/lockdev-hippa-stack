@@ -1,0 +1,77 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "IAMRoleManagement",
+            "Effect": "Allow",
+            "Action": [
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:GetRole",
+                "iam:ListRoles",
+                "iam:UpdateRole",
+                "iam:TagRole",
+                "iam:UntagRole",
+                "iam:PutRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:GetRolePolicy",
+                "iam:ListRolePolicies"
+            ],
+            "Resource": [
+                "arn:aws:iam::*:role/hipaa-*",
+                "arn:aws:iam::*:role/*ecs*",
+                "arn:aws:iam::*:role/*cloudtrail*",
+                "arn:aws:iam::*:role/*config*"
+            ]
+        },
+        {
+            "Sid": "IAMPolicyManagement", 
+            "Effect": "Allow",
+            "Action": [
+                "iam:CreatePolicy",
+                "iam:DeletePolicy",
+                "iam:GetPolicy",
+                "iam:GetPolicyVersion",
+                "iam:ListPolicies",
+                "iam:ListPolicyVersions",
+                "iam:AttachRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:ListAttachedRolePolicies"
+            ],
+            "Resource": [
+                "arn:aws:iam::*:policy/hipaa-*",
+                "arn:aws:iam::aws:policy/*"
+            ]
+        },
+        {
+            "Sid": "PassRoleForServices",
+            "Effect": "Allow", 
+            "Action": "iam:PassRole",
+            "Resource": [
+                "arn:aws:iam::*:role/hipaa-*",
+                "arn:aws:iam::*:role/*ecs*",
+                "arn:aws:iam::*:role/*cloudtrail*",
+                "arn:aws:iam::*:role/*config*"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "iam:PassedToService": [
+                        "ecs-tasks.amazonaws.com",
+                        "cloudtrail.amazonaws.com",
+                        "config.amazonaws.com"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "ReadOnlyAccess",
+            "Effect": "Allow",
+            "Action": [
+                "iam:GetUser",
+                "iam:ListUsers",
+                "iam:GetAccountSummary"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
