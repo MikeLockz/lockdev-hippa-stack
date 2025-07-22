@@ -68,7 +68,8 @@
       "Bash(git pull:*)",
       "Bash(git stash:*)",
       "Bash(safety:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }

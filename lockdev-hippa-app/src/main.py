@@ -3,6 +3,7 @@ HIPAA-compliant FastAPI application main module.
 """
 import os
 from contextlib import asynccontextmanager
+from typing import AsyncGenerator, Callable, Awaitable
 
 import structlog
 from fastapi import FastAPI, Request, Response
@@ -27,13 +28,11 @@ from .utils.database import init_database
 REQUEST_COUNT = Counter(
     "http_requests_total", "Total HTTP requests", ["method", "endpoint"]
 )
-REQUEST_DURATION = Histogram(
-    "http_request_duration_seconds", "HTTP request duration"
-)
+REQUEST_DURATION = Histogram("http_request_duration_seconds", "HTTP request duration")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan management."""
     # Startup
     setup_logging()
@@ -47,8 +46,7 @@ async def lifespan(app: FastAPI):
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.warning(
-            "Database initialization failed - "
-            "application will run without database",
+            "Database initialization failed - " "application will run without database",
             error=str(e),
         )
 
@@ -85,13 +83,17 @@ def create_app() -> FastAPI:
 
     # Add security headers middleware
     @app.middleware("http")
-    async def add_security_headers(request: Request, call_next):
+    async def add_security_headers(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         response = await call_next(request)
         return setup_security_headers(response)
 
     # Request/response logging middleware
     @app.middleware("http")
-    async def log_requests(request: Request, call_next):
+    async def log_requests(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         logger = structlog.get_logger()
 
         # Log request (be careful not to log sensitive data)
@@ -126,11 +128,13 @@ def create_app() -> FastAPI:
 
     # Metrics endpoint
     @app.get("/metrics")
-    async def metrics():
+    async def metrics() -> Response:
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     @app.exception_handler(Exception)
-    async def global_exception_handler(request: Request, exc: Exception):
+    async def global_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         logger = structlog.get_logger()
         logger.error(
             "Unhandled exception",

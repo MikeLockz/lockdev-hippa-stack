@@ -2,7 +2,7 @@
 Main API routes for HIPAA-compliant application.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 import structlog
 from fastapi import APIRouter, Depends
@@ -36,7 +36,9 @@ class UserResponse(BaseModel):
 
 
 @router.get("/hello", response_model=HelloResponse)
-async def hello_world(current_user: Optional[User] = Depends(get_current_user)):
+async def hello_world(
+    current_user: Optional[User] = Depends(get_current_user),
+) -> HelloResponse:
     """Hello world endpoint with optional authentication."""
     logger.info(
         "Hello world endpoint accessed",
@@ -46,19 +48,21 @@ async def hello_world(current_user: Optional[User] = Depends(get_current_user)):
     return HelloResponse(
         message="Hello from HIPAA-compliant healthcare API!",
         timestamp=datetime.utcnow(),
-        user_id=current_user.id if current_user else None,
+        user_id=str(current_user.id) if current_user else None,
     )
 
 
 @router.get("/secure", response_model=HelloResponse)
-async def secure_endpoint(current_user: User = Depends(get_current_user)):
+async def secure_endpoint(
+    current_user: User = Depends(get_current_user),
+) -> HelloResponse:
     """Secure endpoint requiring authentication."""
     logger.info("Secure endpoint accessed", user_id=current_user.id)
 
     return HelloResponse(
         message="This is a secure endpoint - you are authenticated!",
         timestamp=datetime.utcnow(),
-        user_id=current_user.id,
+        user_id=str(current_user.id),
     )
 
 
@@ -66,22 +70,22 @@ async def secure_endpoint(current_user: User = Depends(get_current_user)):
 async def get_current_user_info(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
-):
+) -> UserResponse:
     """Get current user information."""
     logger.info("User info requested", user_id=current_user.id)
 
     return UserResponse(
-        id=current_user.id,
-        email=current_user.email,
-        created_at=current_user.created_at,
-        is_active=current_user.is_active,
+        id=str(current_user.id),
+        email=str(current_user.email),
+        created_at=current_user.created_at,  # type: ignore[arg-type]
+        is_active=bool(current_user.is_active),
     )
 
 
 @router.get("/audit-log")
 async def get_audit_log(
     current_user: User = Depends(get_current_user), limit: int = 10
-):
+) -> dict[str, Any]:
     """Get audit log entries (HIPAA compliance requirement)."""
     logger.info("Audit log requested", user_id=current_user.id, limit=limit)
 

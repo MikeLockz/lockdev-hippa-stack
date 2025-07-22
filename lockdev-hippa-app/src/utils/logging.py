@@ -58,7 +58,7 @@ def sanitize_log_data(data: Dict[str, Any]) -> Dict[str, Any]:
         "full_name",
     }
 
-    sanitized = {}
+    sanitized: Dict[str, Any] = {}
     for key, value in data.items():
         if key.lower() in sensitive_fields:
             sanitized[key] = "[REDACTED]"

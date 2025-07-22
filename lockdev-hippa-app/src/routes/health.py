@@ -34,7 +34,7 @@ class DetailedHealthResponse(BaseModel):
 
 
 @router.get("/", response_model=HealthResponse)
-async def health_check():
+async def health_check() -> HealthResponse:
     """Basic health check endpoint."""
     return HealthResponse(
         status="healthy",
@@ -45,7 +45,7 @@ async def health_check():
 
 
 @router.get("/ready", response_model=DetailedHealthResponse)
-async def readiness_check():
+async def readiness_check() -> DetailedHealthResponse:
     """Readiness check including database connectivity."""
     services = {}
     overall_status = "healthy"
@@ -93,13 +93,13 @@ async def readiness_check():
 
 
 @router.get("/live")
-async def liveness_check():
+async def liveness_check() -> dict[str, Any]:
     """Liveness check for Kubernetes/ECS."""
     return {"status": "alive", "timestamp": datetime.utcnow()}
 
 
 @router.get("/startup")
-async def startup_check():
+async def startup_check() -> dict[str, Any]:
     """Startup check for container orchestration."""
     # Add any startup-specific checks here
     return {"status": "ready", "timestamp": datetime.utcnow()}
