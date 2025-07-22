@@ -522,6 +522,15 @@ ci-status: ## Check CI/CD pipeline status
 		echo ""; \
 		echo "Workflow status:"; \
 		gh workflow list; \
+		echo ""; \
+		echo "🔗 Quick Links:"; \
+		REPO_URL=$$(gh repo view --json url -q '.url'); \
+		echo "  GitHub Actions: $$REPO_URL/actions"; \
+		echo "  Latest Runs: $$REPO_URL/actions/runs"; \
+		echo ""; \
+		echo "📊 View specific run details:"; \
+		echo "  gh run view <run-id> --log-failed"; \
+		echo "  gh run view <run-id> --log"; \
 	else \
 		echo "GitHub CLI not found. Install with: brew install gh"; \
 		echo "Or check manually at: https://github.com/your-repo/actions"; \
