@@ -133,40 +133,30 @@ install-docker: ## Install Docker
 install-security-tools: install-python ## Install security scanning tools (Safety and Trivy)
 	@echo "Installing security scanning tools..."
 	@echo "Checking Safety installation..."
-	@if ! command -v safety >/dev/null 2>&1 && ! python3 -c "import safety" >/dev/null 2>&1; then \
+	@if ! command -v safety >/dev/null 2>&1; then \
 		echo "Installing Safety for dependency vulnerability scanning..."; \
-		if [ "$(UNAME_S)" = "Darwin" ]; then \
-			if ! command -v pipx >/dev/null 2>&1; then \
-				echo "Installing pipx first..."; \
-				if [ "$(UNAME_M)" = "arm64" ]; then \
-					arch -arm64 brew install pipx; \
-				else \
-					brew install pipx; \
-				fi; \
+		if ! command -v pipx >/dev/null 2>&1; then \
+			echo "Installing pipx first..."; \
+			if [ "$(UNAME_S)" = "Darwin" ]; then \
+				brew install pipx; \
+			else \
+				pip3 install --user pipx; \
 			fi; \
-			pipx install safety; \
-		else \
-			pip3 install --user safety; \
 		fi; \
+		pipx install safety; \
 	else \
-		if command -v safety >/dev/null 2>&1; then \
-			echo "Safety found: $$(safety --version)"; \
-		else \
-			echo "Safety found: $$(python3 -c 'import safety; print(safety.__version__)')"; \
-		fi; \
+		echo "Safety found: $$(safety --version)"; \
 	fi
 	@echo "Checking Trivy installation..."
 	@if ! command -v trivy >/dev/null 2>&1; then \
 		echo "Installing Trivy for container/filesystem vulnerability scanning..."; \
 		if [ "$(UNAME_S)" = "Darwin" ]; then \
-			if command -v brew >/dev/null 2>&1; then \
-				brew install aquasecurity/trivy/trivy; \
+			if [ "$(UNAME_M)" = "arm64" ]; then \
+				arch -arm64 brew install trivy; \
 			else \
-				echo "Installing Trivy using curl..."; \
-				curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin; \
+				brew install trivy; \
 			fi; \
 		elif [ "$(UNAME_S)" = "Linux" ]; then \
-			echo "Installing Trivy using curl..."; \
 			curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin; \
 		else \
 			echo "Please install Trivy manually for your platform"; \
