@@ -2,9 +2,8 @@
 User model for HIPAA-compliant application.
 """
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import Column, String, Boolean, DateTime, Text
+from sqlalchemy import Column, String, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
@@ -25,7 +24,10 @@ class User(Base):
     # Audit fields
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
     )
     created_by = Column(UUID(as_uuid=True), nullable=True)
     updated_by = Column(UUID(as_uuid=True), nullable=True)
@@ -52,5 +54,5 @@ class User(Base):
             "is_active": self.is_active,
             "role": self.role,
             "created_at": self.created_at.isoformat(),
-            "last_login": self.last_login.isoformat() if self.last_login else None,
+            "last_login": (self.last_login.isoformat() if self.last_login else None),
         }

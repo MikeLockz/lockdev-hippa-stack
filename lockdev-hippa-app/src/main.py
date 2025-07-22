@@ -27,9 +27,7 @@ from .utils.database import init_database
 REQUEST_COUNT = Counter(
     "http_requests_total", "Total HTTP requests", ["method", "endpoint"]
 )
-REQUEST_DURATION = Histogram(
-    "http_request_duration_seconds", "HTTP request duration"
-)
+REQUEST_DURATION = Histogram("http_request_duration_seconds", "HTTP request duration")
 
 
 @asynccontextmanager
@@ -47,8 +45,7 @@ async def lifespan(app: FastAPI):
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.warning(
-            "Database initialization failed - "
-            "application will run without database",
+            "Database initialization failed - " "application will run without database",
             error=str(e),
         )
 
@@ -64,12 +61,8 @@ def create_app() -> FastAPI:
         title="HIPAA-Compliant Healthcare API",
         description="A secure, HIPAA-compliant healthcare data API",
         version="0.1.0",
-        docs_url=(
-            "/docs" if os.getenv("ENVIRONMENT") == "development" else None
-        ),
-        redoc_url=(
-            "/redoc" if os.getenv("ENVIRONMENT") == "development" else None
-        ),
+        docs_url=("/docs" if os.getenv("ENVIRONMENT") == "development" else None),
+        redoc_url=("/redoc" if os.getenv("ENVIRONMENT") == "development" else None),
         lifespan=lifespan,
     )
 

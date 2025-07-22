@@ -11,7 +11,6 @@ python = "^3.11"
 fastapi = "^0.104.1"
 uvicorn = {extras = ["standard"], version = "^0.24.0"}
 sqlalchemy = "^2.0.23"
-psycopg2-binary = "^2.9.9"
 asyncpg = "^0.29.0"
 alembic = "^1.13.0"
 pydantic = "^2.5.0"
@@ -33,6 +32,8 @@ pre-commit = "^3.6.0"
 pytest-cov = "^4.1.0"
 bandit = "^1.7.5"
 safety = "^3.0.0"
+types-python-jose = "^3.5.0.20250531"
+types-passlib = "^1.7.7.20250602"
 
 [build-system]
 requires = ["poetry-core"]

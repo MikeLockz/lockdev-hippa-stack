@@ -353,7 +353,12 @@ test-app: ## Run comprehensive application tests (matches CI)
 	echo "Running Bandit security scan..." && \
 	poetry run bandit -r src/ && \
 	echo "Running Safety vulnerability check..." && \
-	(poetry run safety check || echo "⚠️  Safety check failed or not available") && \
+	(if command -v safety >/dev/null 2>&1 || python3 -c "import safety" >/dev/null 2>&1; then \
+		poetry run safety check; \
+	else \
+		echo "⚠️  Safety not available - install with: make install-security-tools"; \
+		false; \
+	fi) && \
 	echo "✅ Security checks passed" && \
 	echo "" && \
 	echo "🎨 Code Quality Checks" && \

@@ -5,23 +5,24 @@ import os
 from typing import AsyncGenerator
 
 import structlog
-from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    create_async_engine,
+    async_sessionmaker,
+)
+from sqlalchemy.orm import declarative_base
 
 
 logger = structlog.get_logger()
 
 # Database configuration
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql+asyncpg://postgres:password@localhost:5432/hipaa_db"
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:password@localhost:5432/hipaa_db",
 )
 
 # Use sqlite for testing if database URL is not provided
-if (
-    os.getenv("ENVIRONMENT") == "testing"
-    and DATABASE_URL == "postgresql+asyncpg://postgres:password@localhost:5432/hipaa_db"
-):
+if os.getenv("ENVIRONMENT") == "testing":
     DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
 # Create async engine
@@ -61,8 +62,8 @@ async def init_database() -> None:
     """Initialize database tables."""
     try:
         # Import models to register them
-        from ..models.user import User
-        from ..models.audit_log import AuditLog
+        from ..models.user import User  # noqa: F401
+        from ..models.audit_log import AuditLog  # noqa: F401
 
         # Create tables
         async with engine.begin() as conn:

@@ -2,16 +2,12 @@
 Health check endpoints for HIPAA-compliant application.
 """
 import os
-import asyncio
 from datetime import datetime
 from typing import Dict, Any
 
 import structlog
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from ..utils.database import get_db_session
 
 
 logger = structlog.get_logger()
@@ -68,10 +64,13 @@ async def readiness_check():
         if result:
             services["database"] = {
                 "status": "healthy",
-                "response_time_ms": 0,  # You could measure actual response time
+                "response_time_ms": 0,  # Measure actual response time
             }
         else:
-            services["database"] = {"status": "unhealthy", "error": "Query failed"}
+            services["database"] = {
+                "status": "unhealthy",
+                "error": "Query failed",
+            }
 
         await db_gen.aclose()
     except Exception as e:

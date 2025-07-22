@@ -62,7 +62,9 @@
       "Bash(gh run view:*)",
       "Bash(aws rds describe-db-instances:*)",
       "Bash(poetry show:*)",
-      "Bash(command -v:*)"
+      "Bash(command -v:*)",
+      "Bash(grep:*)",
+      "Bash(poetry remove:*)"
     ],
     "deny": []
   }
