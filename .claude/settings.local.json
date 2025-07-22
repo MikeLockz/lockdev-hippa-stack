@@ -64,7 +64,9 @@
       "Bash(poetry show:*)",
       "Bash(command -v:*)",
       "Bash(grep:*)",
-      "Bash(poetry remove:*)"
+      "Bash(poetry remove:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ],
     "deny": []
   }

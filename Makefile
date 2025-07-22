@@ -385,8 +385,8 @@ test-app: ## Run comprehensive application tests (matches CI)
 		trivy fs --severity HIGH,CRITICAL . && \
 		echo "✅ Trivy scan completed"; \
 	else \
-		echo "⚠️  Trivy not available - install for full CI equivalence"; \
-		echo "  brew install aquasecurity/trivy/trivy"; \
+		echo "⚠️  Trivy not available - install with: make install-security-tools"; \
+		false; \
 	fi) && \
 	echo "" && \
 	echo "🧹 Cleanup" && \
@@ -407,7 +407,12 @@ test-app-security: ## Run security scans only
 	echo "Running Bandit security scan..." && \
 	poetry run bandit -r src/ && \
 	echo "Running Safety vulnerability check..." && \
-	(poetry run safety check || echo "⚠️  Safety check failed or not available") && \
+	(if command -v safety >/dev/null 2>&1 || python3 -c "import safety" >/dev/null 2>&1; then \
+		poetry run safety check; \
+	else \
+		echo "⚠️  Safety not available - install with: make install-security-tools"; \
+		false; \
+	fi) && \
 	echo "✅ Security scans completed"
 
 test-app-trivy: ## Run Trivy vulnerability scan (like CI)
@@ -415,10 +420,8 @@ test-app-trivy: ## Run Trivy vulnerability scan (like CI)
 	@if command -v trivy >/dev/null 2>&1; then \
 		cd lockdev-hippa-app && trivy fs --severity HIGH,CRITICAL .; \
 	else \
-		echo "⚠️  Trivy not installed. Install with:"; \
-		echo "  brew install aquasecurity/trivy/trivy"; \
-		echo "  # or"; \
-		echo "  curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin"; \
+		echo "⚠️  Trivy not installed. Install with: make install-security-tools"; \
+		false; \
 	fi
 
 # Code quality targets
