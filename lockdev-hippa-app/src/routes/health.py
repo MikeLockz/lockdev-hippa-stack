@@ -20,6 +20,7 @@ router = APIRouter()
 
 class HealthResponse(BaseModel):
     """Health check response model."""
+
     status: str
     timestamp: datetime
     version: str
@@ -28,6 +29,7 @@ class HealthResponse(BaseModel):
 
 class DetailedHealthResponse(BaseModel):
     """Detailed health check response model."""
+
     status: str
     timestamp: datetime
     version: str
@@ -42,7 +44,7 @@ async def health_check():
         status="healthy",
         timestamp=datetime.utcnow(),
         version="0.1.0",
-        environment=os.getenv("ENVIRONMENT", "development")
+        environment=os.getenv("ENVIRONMENT", "development"),
     )
 
 
@@ -51,38 +53,43 @@ async def readiness_check():
     """Readiness check including database connectivity."""
     services = {}
     overall_status = "healthy"
-    
+
     # Check database connection (optional)
     try:
         from ..utils.database import get_db_session
+
         db_gen = get_db_session()
         db = await db_gen.__anext__()
-        
+
         # Simple query to check database connectivity
         from sqlalchemy import text
+
         result = await db.execute(text("SELECT 1"))
         if result:
             services["database"] = {
                 "status": "healthy",
-                "response_time_ms": 0  # You could measure actual response time
+                "response_time_ms": 0,  # You could measure actual response time
             }
         else:
             services["database"] = {"status": "unhealthy", "error": "Query failed"}
-        
+
         await db_gen.aclose()
     except Exception as e:
         logger.warning("Database health check failed", error=str(e))
-        services["database"] = {"status": "unavailable", "error": "Database not connected"}
-    
+        services["database"] = {
+            "status": "unavailable",
+            "error": "Database not connected",
+        }
+
     # Check external services (add as needed)
     services["external_apis"] = {"status": "healthy"}
-    
+
     return DetailedHealthResponse(
         status=overall_status,
         timestamp=datetime.utcnow(),
         version="0.1.0",
         environment=os.getenv("ENVIRONMENT", "development"),
-        services=services
+        services=services,
     )
 
 

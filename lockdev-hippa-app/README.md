@@ -117,3 +117,4 @@ The application is designed to be deployed on AWS ECS Fargate with:
 ## Related Repository
 
 This application requires the infrastructure defined in the `lockdev-hippa-iac` repository.# Test trigger
+# Test optimized pipeline

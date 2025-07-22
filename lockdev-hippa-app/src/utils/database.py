@@ -14,12 +14,14 @@ logger = structlog.get_logger()
 
 # Database configuration
 DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:password@localhost:5432/hipaa_db"
+    "DATABASE_URL", "postgresql+asyncpg://postgres:password@localhost:5432/hipaa_db"
 )
 
 # Use sqlite for testing if database URL is not provided
-if os.getenv("ENVIRONMENT") == "testing" and DATABASE_URL == "postgresql+asyncpg://postgres:password@localhost:5432/hipaa_db":
+if (
+    os.getenv("ENVIRONMENT") == "testing"
+    and DATABASE_URL == "postgresql+asyncpg://postgres:password@localhost:5432/hipaa_db"
+):
     DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
 # Create async engine
@@ -31,11 +33,7 @@ engine = create_async_engine(
 )
 
 # Create async session factory
-async_session = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False
-)
+async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 # Create declarative base
 Base = declarative_base()
@@ -65,11 +63,11 @@ async def init_database() -> None:
         # Import models to register them
         from ..models.user import User
         from ..models.audit_log import AuditLog
-        
+
         # Create tables
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        
+
         logger.info("Database tables created successfully")
     except Exception as e:
         logger.error("Failed to initialize database", error=str(e))

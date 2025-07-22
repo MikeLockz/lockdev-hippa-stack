@@ -36,7 +36,7 @@ def test_security_headers(client):
     """Test security headers are present."""
     response = client.get("/health/")
     assert response.status_code == 200
-    
+
     # Check security headers
     assert "X-Content-Type-Options" in response.headers
     assert "X-Frame-Options" in response.headers

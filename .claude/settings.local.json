@@ -60,7 +60,9 @@
       "Bash(gh api:*)",
       "Bash(git rebase:*)",
       "Bash(gh run view:*)",
-      "Bash(aws rds describe-db-instances:*)"
+      "Bash(aws rds describe-db-instances:*)",
+      "Bash(poetry show:*)",
+      "Bash(command -v:*)"
     ],
     "deny": []
   }
