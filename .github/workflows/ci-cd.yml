@@ -51,28 +51,33 @@ jobs:
       id: cached-poetry-dependencies
       uses: actions/cache@v3
       with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+        path: lockdev-hippa-app/.venv
+        key: venv-${{ runner.os }}-${{ hashFiles('lockdev-hippa-app/poetry.lock') }}
 
     - name: Install dependencies
       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      working-directory: lockdev-hippa-app
       run: poetry install --no-interaction --no-root
 
     - name: Install project
+      working-directory: lockdev-hippa-app
       run: poetry install --no-interaction
 
     - name: Run security checks
+      working-directory: lockdev-hippa-app
       run: |
         poetry run bandit -r src/
         poetry run safety check
 
     - name: Run linting
+      working-directory: lockdev-hippa-app
       run: |
         poetry run black --check src/
         poetry run flake8 src/
         poetry run mypy src/
 
     - name: Run tests
+      working-directory: lockdev-hippa-app
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         JWT_SECRET: test-secret
@@ -83,7 +88,7 @@ jobs:
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
-        file: ./coverage.xml
+        file: ./lockdev-hippa-app/coverage.xml
         flags: unittests
         name: codecov-umbrella
 
@@ -99,7 +104,7 @@ jobs:
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
-        scan-ref: '.'
+        scan-ref: './lockdev-hippa-app'
         format: 'sarif'
         output: 'trivy-results.sarif'
 
@@ -130,6 +135,7 @@ jobs:
 
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
+      working-directory: lockdev-hippa-app
       run: |
         IMAGE_TAG=${GITHUB_SHA::7}
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
