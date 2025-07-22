@@ -130,11 +130,11 @@ install-docker: ## Install Docker
 		echo "Docker found: $$(docker --version)"; \
 	fi
 
-install-security-tools: install-python ## Install security scanning tools (Safety and Trivy)
+install-security-tools: install-python ## Install security scanning tools (pip-audit and Trivy)
 	@echo "Installing security scanning tools..."
-	@echo "Checking Safety installation..."
-	@if ! command -v safety >/dev/null 2>&1; then \
-		echo "Installing Safety for dependency vulnerability scanning..."; \
+	@echo "Checking pip-audit installation..."
+	@if ! command -v pip-audit >/dev/null 2>&1; then \
+		echo "Installing pip-audit for dependency vulnerability scanning..."; \
 		if ! command -v pipx >/dev/null 2>&1; then \
 			echo "Installing pipx first..."; \
 			if [ "$(UNAME_S)" = "Darwin" ]; then \
@@ -143,15 +143,19 @@ install-security-tools: install-python ## Install security scanning tools (Safet
 				pip3 install --user pipx; \
 			fi; \
 		fi; \
-		pipx install safety; \
+		pipx install pip-audit; \
 	else \
-		echo "Safety found: $$(safety --version)"; \
+		echo "pip-audit found: $$(pip-audit --version)"; \
 	fi
 	@echo "Checking Trivy installation..."
 	@if ! command -v trivy >/dev/null 2>&1; then \
 		echo "Installing Trivy for container/filesystem vulnerability scanning..."; \
 		if [ "$(UNAME_S)" = "Darwin" ]; then \
-			brew install trivy; \
+			if [ "$(UNAME_M)" = "arm64" ]; then \
+				arch -arm64 brew install trivy; \
+			else \
+				brew install trivy; \
+			fi; \
 		elif [ "$(UNAME_S)" = "Linux" ]; then \
 			curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin; \
 		else \
@@ -227,7 +231,7 @@ verify-tools: ## Verify all required tools are installed
 	@echo -n "AWS CLI: "; aws --version || echo "❌ MISSING"
 	@echo -n "Docker: "; docker --version || echo "❌ MISSING"
 	@echo -n "Git: "; git --version || echo "❌ MISSING"
-	@echo -n "Safety: "; (command -v safety >/dev/null 2>&1 && safety --version) || (python3 -c "import safety; print('v' + safety.__version__)" 2>/dev/null) || echo "❌ MISSING (install with: make install-security-tools)"
+	@echo -n "pip-audit: "; pip-audit --version 2>/dev/null || echo "❌ MISSING (install with: make install-security-tools)"
 	@echo -n "Trivy: "; trivy --version 2>/dev/null | head -1 || echo "❌ MISSING (install with: make install-security-tools)"
 
 verify-deps: ## Verify project dependencies are installed
@@ -338,11 +342,11 @@ test-app: ## Run comprehensive application tests (matches CI)
 	echo "==================" && \
 	echo "Running Bandit security scan..." && \
 	poetry run bandit -r src/ && \
-	echo "Running Safety vulnerability check..." && \
-	(if command -v safety >/dev/null 2>&1 || python3 -c "import safety" >/dev/null 2>&1; then \
-		poetry run safety check; \
+	echo "Running pip-audit vulnerability check..." && \
+	(if command -v pip-audit >/dev/null 2>&1; then \
+		pip-audit --desc --format=text; \
 	else \
-		echo "⚠️  Safety not available - install with: make install-security-tools"; \
+		echo "⚠️  pip-audit not available - install with: make install-security-tools"; \
 		false; \
 	fi) && \
 	echo "✅ Security checks passed" && \
@@ -387,16 +391,16 @@ test-app-quick: ## Run basic application tests only (original behavior)
 	@echo "Running basic application tests..."
 	@cd lockdev-hippa-app && ENVIRONMENT=testing poetry run pytest tests/ -v
 
-test-app-security: ## Run security scans only
+test-app-security: ## Run security scans only (pip-audit and Bandit)
 	@echo "🔒 Running security scans..."
 	@cd lockdev-hippa-app && \
 	echo "Running Bandit security scan..." && \
 	poetry run bandit -r src/ && \
-	echo "Running Safety vulnerability check..." && \
-	(if command -v safety >/dev/null 2>&1 || python3 -c "import safety" >/dev/null 2>&1; then \
-		poetry run safety check; \
+	echo "Running pip-audit vulnerability check..." && \
+	(if command -v pip-audit >/dev/null 2>&1; then \
+		pip-audit --desc --format=text; \
 	else \
-		echo "⚠️  Safety not available - install with: make install-security-tools"; \
+		echo "⚠️  pip-audit not available - install with: make install-security-tools"; \
 		false; \
 	fi) && \
 	echo "✅ Security scans completed"
