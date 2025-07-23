@@ -2,12 +2,12 @@ name: HIPAA App CI/CD
 
 on:
   push:
-    branches: [ main, master, develop, trunk ]
+    branches: [ develop, trunk ]
     paths:
       - 'lockdev-hippa-app/**'
       - '.github/workflows/ci-cd.yml'
   pull_request:
-    branches: [ main, master, trunk ]
+    branches: [ trunk ]
     paths:
       - 'lockdev-hippa-app/**'
       - '.github/workflows/ci-cd.yml'
