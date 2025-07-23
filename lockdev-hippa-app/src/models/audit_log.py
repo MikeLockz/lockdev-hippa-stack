@@ -1,6 +1,7 @@
 """
 Audit log model for HIPAA compliance.
 """
+
 from datetime import datetime
 
 from sqlalchemy import Column, String, DateTime, Text, JSON

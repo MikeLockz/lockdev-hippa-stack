@@ -1,6 +1,7 @@
 """
 HIPAA-compliant FastAPI application main module.
 """
+
 import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Callable, Awaitable

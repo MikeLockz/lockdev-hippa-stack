@@ -1,6 +1,7 @@
 """
 Main API routes for HIPAA-compliant application.
 """
+
 from datetime import datetime
 from typing import Optional, Any
 

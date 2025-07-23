@@ -1,4 +1,5 @@
 """Test configuration for HIPAA application."""
+
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock

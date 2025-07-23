@@ -1,6 +1,7 @@
 """
 Database utilities for HIPAA-compliant application.
 """
+
 import os
 from typing import AsyncGenerator
 

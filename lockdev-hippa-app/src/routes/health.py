@@ -1,6 +1,7 @@
 """
 Health check endpoints for HIPAA-compliant application.
 """
+
 import os
 from datetime import datetime, UTC
 from typing import Dict, Any

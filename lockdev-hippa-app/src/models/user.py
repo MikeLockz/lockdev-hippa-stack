@@ -1,6 +1,7 @@
 """
 User model for HIPAA-compliant application.
 """
+
 from datetime import datetime
 
 from sqlalchemy import Column, String, Boolean, DateTime

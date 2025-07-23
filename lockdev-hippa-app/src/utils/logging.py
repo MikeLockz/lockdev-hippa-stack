@@ -1,6 +1,7 @@
 """
 Logging configuration for HIPAA compliance.
 """
+
 import os
 import logging
 from typing import Dict, Any
@@ -32,9 +33,9 @@ def setup_logging() -> None:
     # Configure standard logging
     logging.basicConfig(
         format="%(message)s",
-        level=logging.INFO
-        if os.getenv("LOG_LEVEL", "INFO") == "INFO"
-        else logging.DEBUG,
+        level=(
+            logging.INFO if os.getenv("LOG_LEVEL", "INFO") == "INFO" else logging.DEBUG
+        ),
     )
 
 

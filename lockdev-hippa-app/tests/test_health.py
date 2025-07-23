@@ -1,6 +1,7 @@
 """
 Tests for health endpoints.
 """
+
 import pytest
 
 
