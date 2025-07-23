@@ -219,16 +219,16 @@ class AuthProviderFactory:
     
     def _register_builtin_providers(self) -> None:
         """Register built-in authentication providers."""
-        # Note: In a real implementation, these would be actual provider classes
-        # For now, we'll register placeholder entries
+        from .providers.custom import CustomAuthProvider
         
         # Custom provider (always available)
         self.registry.register_provider(
             provider_type=AuthProviderType.CUSTOM,
-            provider_class=AuthenticationProvider,  # This would be a concrete implementation
-            description="Custom authentication provider",
+            provider_class=CustomAuthProvider,
+            description="Custom authentication provider with HIPAA compliance",
             supports_mfa=True,
-            supports_sso=False
+            supports_sso=False,
+            version="1.0.0"
         )
         
         logger.info("Registered built-in authentication providers")
