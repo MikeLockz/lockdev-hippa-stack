@@ -2,7 +2,7 @@
 Health check endpoints for HIPAA-compliant application.
 """
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, Any
 
 import structlog
@@ -38,7 +38,7 @@ async def health_check() -> HealthResponse:
     """Basic health check endpoint."""
     return HealthResponse(
         status="healthy",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         version="0.1.0",
         environment=os.getenv("ENVIRONMENT", "development"),
     )
@@ -85,7 +85,7 @@ async def readiness_check() -> DetailedHealthResponse:
 
     return DetailedHealthResponse(
         status=overall_status,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         version="0.1.0",
         environment=os.getenv("ENVIRONMENT", "development"),
         services=services,
@@ -95,11 +95,11 @@ async def readiness_check() -> DetailedHealthResponse:
 @router.get("/live")
 async def liveness_check() -> dict[str, Any]:
     """Liveness check for Kubernetes/ECS."""
-    return {"status": "alive", "timestamp": datetime.utcnow()}
+    return {"status": "alive", "timestamp": datetime.now(UTC)}
 
 
 @router.get("/startup")
 async def startup_check() -> dict[str, Any]:
     """Startup check for container orchestration."""
     # Add any startup-specific checks here
-    return {"status": "ready", "timestamp": datetime.utcnow()}
+    return {"status": "ready", "timestamp": datetime.now(UTC)}
