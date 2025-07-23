@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from ..utils.database import get_db_session
-from ..utils.security import get_current_user
+from ..utils.security import get_current_user, require_auth
 from ..models.user import User
 
 
@@ -55,7 +55,7 @@ async def hello_world(
 
 @router.get("/secure", response_model=HelloResponse)
 async def secure_endpoint(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_auth),
 ) -> HelloResponse:
     """Secure endpoint requiring authentication."""
     logger.info("Secure endpoint accessed", user_id=current_user.id)
@@ -69,7 +69,7 @@ async def secure_endpoint(
 
 @router.get("/users/me", response_model=UserResponse)
 async def get_current_user_info(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db_session),
 ) -> UserResponse:
     """Get current user information."""
@@ -85,7 +85,7 @@ async def get_current_user_info(
 
 @router.get("/audit-log")
 async def get_audit_log(
-    current_user: User = Depends(get_current_user), limit: int = 10
+    current_user: User = Depends(require_auth), limit: int = 10
 ) -> dict[str, Any]:
     """Get audit log entries (HIPAA compliance requirement)."""
     logger.info("Audit log requested", user_id=current_user.id, limit=limit)
