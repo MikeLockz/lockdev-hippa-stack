@@ -8,7 +8,7 @@ packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.104.1"
+fastapi = "^0.116.1"
 uvicorn = {extras = ["standard"], version = "^0.24.0"}
 sqlalchemy = "^2.0.23"
 asyncpg = "^0.29.0"
@@ -16,7 +16,7 @@ alembic = "^1.13.0"
 pydantic = "^2.5.0"
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
-python-multipart = "^0.0.6"
+python-multipart = "^0.0.18"
 structlog = "^23.2.0"
 prometheus-client = "^0.19.0"
 httpx = "^0.25.2"
@@ -26,7 +26,7 @@ setuptools = "^78.1.1"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
 pytest-asyncio = "^0.21.1"
-black = "^23.11.0"
+black = "^24.3.0"
 flake8 = "^6.1.0"
 mypy = "^1.7.1"
 pre-commit = "^3.6.0"
