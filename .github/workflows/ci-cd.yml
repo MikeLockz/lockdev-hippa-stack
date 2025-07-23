@@ -74,11 +74,14 @@ jobs:
           echo "Using cached dependencies"
         fi
 
+    - name: Install pip-audit
+      run: pip install pip-audit
+
     - name: Run security checks
       working-directory: lockdev-hippa-app
       run: |
         poetry run bandit -r src/
-        poetry run safety check
+        pip-audit --desc
 
     - name: Run linting
       working-directory: lockdev-hippa-app

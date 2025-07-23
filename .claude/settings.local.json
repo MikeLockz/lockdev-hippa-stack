@@ -69,7 +69,9 @@
       "Bash(git stash:*)",
       "Bash(safety:*)",
       "Bash(cat:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(poetry update:*)",
+      "Bash(pip-audit:*)"
     ],
     "deny": []
   }
