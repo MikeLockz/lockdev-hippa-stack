@@ -31,7 +31,6 @@ mypy = "^1.7.1"
 pre-commit = "^3.6.0"
 pytest-cov = "^4.1.0"
 bandit = "^1.7.5"
-safety = "^3.0.0"
 types-python-jose = "^3.5.0.20250531"
 types-passlib = "^1.7.7.20250602"
 

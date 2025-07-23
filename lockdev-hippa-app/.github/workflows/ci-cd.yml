@@ -61,10 +61,13 @@ jobs:
     - name: Install project
       run: poetry install --no-interaction
 
+    - name: Install pip-audit
+      run: pip install pip-audit
+
     - name: Run security checks
       run: |
         poetry run bandit -r src/
-        poetry run safety check
+        pip-audit --desc
 
     - name: Run linting
       run: |
