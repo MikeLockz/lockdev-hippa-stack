@@ -31,6 +31,12 @@ ENV/
 env.bak/
 venv.bak/
 
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.black_cache/
+
 # Pulumi
 .pulumi/
 Pulumi.*.yaml

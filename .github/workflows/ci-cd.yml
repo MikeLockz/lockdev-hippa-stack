@@ -2,12 +2,12 @@ name: HIPAA App CI/CD
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master, develop, trunk ]
     paths:
       - 'lockdev-hippa-app/**'
       - '.github/workflows/ci-cd.yml'
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, trunk ]
     paths:
       - 'lockdev-hippa-app/**'
       - '.github/workflows/ci-cd.yml'
@@ -21,8 +21,187 @@ env:
   ECS_TASK_DEFINITION: hipaa-app-task
 
 jobs:
+  # Detect changes to determine what jobs to run
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      app: ${{ steps.filter.outputs.app }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          python:
+            - 'lockdev-hippa-app/**/*.py'
+            - 'lockdev-hippa-app/pyproject.toml'
+            - 'lockdev-hippa-app/poetry.lock'
+          app:
+            - 'lockdev-hippa-app/**'
+            - '!lockdev-hippa-app/**/*.md'
+            - '!lockdev-hippa-app/docs/**'
+          docs:
+            - 'lockdev-hippa-app/**/*.md'
+            - 'lockdev-hippa-app/docs/**'
+
+  # Separate linting job that runs in parallel
+  lint:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for git diff
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v4
+      with:
+        path: lockdev-hippa-app/.venv
+        key: venv-${{ runner.os }}-${{ hashFiles('lockdev-hippa-app/poetry.lock') }}
+        restore-keys: |
+          venv-${{ runner.os }}-
+
+    - name: Cache ruff results
+      uses: actions/cache@v4
+      with:
+        path: |
+          lockdev-hippa-app/.ruff_cache
+          lockdev-hippa-app/.mypy_cache
+        key: ruff-cache-${{ runner.os }}-${{ hashFiles('lockdev-hippa-app/src/**/*.py', 'lockdev-hippa-app/pyproject.toml') }}
+        restore-keys: |
+          ruff-cache-${{ runner.os }}-
+
+    - name: Install dependencies
+      working-directory: lockdev-hippa-app
+      run: |
+        if [ "${{ steps.cached-poetry-dependencies.outputs.cache-hit }}" != "true" ]; then
+          poetry install --no-interaction --only=main,dev
+        else
+          echo "Using cached dependencies"
+        fi
+
+    - name: Get changed Python files
+      id: changed-files
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          # For PRs, get files changed against target branch
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.py$' | grep '^lockdev-hippa-app/' | tr '\n' ' ')
+        else
+          # For pushes, get files changed in last commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '\.py$' | grep '^lockdev-hippa-app/' | tr '\n' ' ')
+        fi
+        
+        # Remove lockdev-hippa-app/ prefix for relative paths
+        CHANGED_FILES=$(echo "$CHANGED_FILES" | sed 's|lockdev-hippa-app/||g')
+        
+        echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+        echo "Changed Python files: $CHANGED_FILES"
+        
+        # Set flag for whether we have changes
+        if [ -n "$CHANGED_FILES" ]; then
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_changes=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Run incremental linting
+      if: steps.changed-files.outputs.has_changes == 'true' && github.ref != 'refs/heads/trunk'
+      working-directory: lockdev-hippa-app
+      run: |
+        CHANGED_FILES="${{ steps.changed-files.outputs.changed_files }}"
+        echo "Linting changed files: $CHANGED_FILES"
+        
+        # Run linting tools on changed files only (parallel)
+        poetry run ruff check --cache-dir .ruff_cache $CHANGED_FILES &
+        poetry run ruff format --check --cache-dir .ruff_cache $CHANGED_FILES &
+        poetry run mypy $CHANGED_FILES &
+        wait
+
+    - name: Run full linting
+      if: steps.changed-files.outputs.has_changes == 'false' || github.ref == 'refs/heads/trunk'
+      working-directory: lockdev-hippa-app
+      run: |
+        echo "Running full linting (trunk branch or no specific changes)"
+        poetry run ruff check --cache-dir .ruff_cache src/ &
+        poetry run ruff format --check --cache-dir .ruff_cache src/ &
+        poetry run mypy src/ &
+        wait
+
+  # Security checks job
+  security:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v4
+      with:
+        path: lockdev-hippa-app/.venv
+        key: venv-${{ runner.os }}-${{ hashFiles('lockdev-hippa-app/poetry.lock') }}
+        restore-keys: |
+          venv-${{ runner.os }}-
+
+    - name: Install dependencies
+      working-directory: lockdev-hippa-app
+      run: |
+        if [ "${{ steps.cached-poetry-dependencies.outputs.cache-hit }}" != "true" ]; then
+          poetry install --no-interaction --only=main,dev
+        else
+          echo "Using cached dependencies"
+        fi
+
+    - name: Run security checks
+      working-directory: lockdev-hippa-app
+      run: |
+        poetry run bandit -r src/ &
+        poetry run pip install pip-audit
+        poetry run pip-audit --desc &
+        wait
+
+  # Test job
   test:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     
     services:
       postgres:
@@ -74,20 +253,6 @@ jobs:
           echo "Using cached dependencies"
         fi
 
-    - name: Run security checks
-      working-directory: lockdev-hippa-app
-      run: |
-        poetry run bandit -r src/
-        poetry run pip install pip-audit
-        poetry run pip-audit --desc
-
-    - name: Run linting
-      working-directory: lockdev-hippa-app
-      run: |
-        poetry run black --check src/
-        poetry run flake8 src/
-        poetry run mypy src/
-
     - name: Run tests
       working-directory: lockdev-hippa-app
       env:
@@ -106,7 +271,8 @@ jobs:
 
   security-scan:
     runs-on: ubuntu-latest
-    needs: test
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     permissions:
       security-events: write
       actions: read
@@ -130,8 +296,8 @@ jobs:
 
   build-and-deploy:
     runs-on: ubuntu-latest
-    needs: [test, security-scan]
-    if: github.ref == 'refs/heads/main'
+    needs: [lint, security, test, security-scan]
+    if: github.ref == 'refs/heads/trunk' && needs.changes.outputs.app == 'true'
     
     steps:
     - name: Checkout code

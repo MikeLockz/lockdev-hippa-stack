@@ -50,10 +50,11 @@ lockdev-hippa-app/
    poetry run pytest tests/
    ```
 
-3. Format code:
+3. Format and lint code:
    ```bash
-   poetry run black .
-   poetry run flake8 .
+   poetry run ruff format .
+   poetry run ruff check .
+   poetry run mypy src/
    ```
 
 ## Docker

@@ -26,8 +26,7 @@ setuptools = "^78.1.1"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
 pytest-asyncio = "^0.21.1"
-black = "^24.3.0"
-flake8 = "^6.1.0"
+ruff = "^0.1.8"
 mypy = "^1.7.1"
 pre-commit = "^3.6.0"
 pytest-cov = "^4.1.0"
@@ -39,19 +38,28 @@ types-passlib = "^1.7.7.20250602"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.black]
-line-length = 88
-target-version = ['py311']
-
-[tool.flake8]
-max-line-length = 88
-extend-ignore = ["E203", "W503"]
 
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+# Performance optimizations
+incremental = true
+cache_dir = ".mypy_cache"
+fast_exit = true
+# Skip checking installed packages for speed
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+cache-dir = ".ruff_cache"
+respect-gitignore = true
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90", "I", "N", "UP", "B", "A", "C4", "T20"]
+ignore = ["E203", "W503"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

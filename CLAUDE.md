@@ -59,7 +59,7 @@ aws configure
 poetry install
 
 # Install development dependencies
-poetry add --group dev black flake8 mypy pytest pre-commit
+poetry add --group dev ruff mypy pytest pre-commit
 
 # Setup pre-commit hooks
 pre-commit install
@@ -105,11 +105,9 @@ poetry install
 # Run tests
 poetry run pytest
 
-# Format code
-poetry run black .
-
-# Lint code
-poetry run flake8 .
+# Format and lint code
+poetry run ruff format .
+poetry run ruff check .
 
 # Type check
 poetry run mypy .
@@ -475,11 +473,9 @@ poetry run safety check
 
 #### Code Quality
 ```bash
-# Format code
-poetry run black src/
-
-# Lint code
-poetry run flake8 src/
+# Format and lint code
+poetry run ruff format src/
+poetry run ruff check src/
 
 # Type checking
 poetry run mypy src/
