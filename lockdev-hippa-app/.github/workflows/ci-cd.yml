@@ -61,7 +61,7 @@ jobs:
     - name: Install project
       run: poetry install --no-interaction
 
-    - name: Install pip-audit
+    - name: Install pip-audit for vulnerability scanning
       run: pip install pip-audit
 
     - name: Run security checks
