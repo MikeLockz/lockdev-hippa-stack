@@ -73,7 +73,20 @@
       "Bash(poetry update:*)",
       "Bash(pip-audit:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run watch:*)"
+      "Bash(gh run watch:*)",
+      "Bash(git checkout:*)",
+      "Bash(gh repo edit:*)",
+      "Bash(git branch:*)",
+      "Bash(python -m pytest tests/auth/test_config.py -v)",
+      "Bash(ENVIRONMENT=testing poetry run pytest tests/test_health.py -v)",
+      "Bash(ENVIRONMENT=testing poetry run pytest tests/test_authentication_integration.py -v)",
+      "Bash(ENVIRONMENT=testing poetry run pytest tests/test_auth_fix.py -v)",
+      "Bash(ENVIRONMENT=testing poetry run pytest tests/test_auth_fix.py::TestAuthenticationVulnerabilityFix::test_secure_endpoint_with_real_user -v)",
+      "Bash(python -m pytest tests/auth/providers/test_custom_provider.py -v --no-header)",
+      "Bash(ENVIRONMENT=testing poetry run pytest tests/auth/providers/test_custom_provider.py -v --no-header)",
+      "Bash(python:*)",
+      "Bash(ENVIRONMENT=testing poetry run pytest tests/auth/compliance/test_phi_protection.py -v)",
+      "Bash(ENVIRONMENT=testing poetry run pytest tests/auth/compliance/test_phi_protection.py::test_phi_access_controller_initialization -v)"
     ],
     "deny": []
   }

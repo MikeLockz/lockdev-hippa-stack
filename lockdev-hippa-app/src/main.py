@@ -3,6 +3,7 @@ HIPAA-compliant FastAPI application main module.
 """
 
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Callable, Awaitable
 
@@ -20,9 +21,11 @@ from prometheus_client import (
 
 from .routes.health import router as health_router
 from .routes.api import router as api_router
+from .routes.auth import router as auth_router
 from .utils.security import setup_security_headers
 from .utils.logging import setup_logging
 from .utils.database import init_database
+from .auth import AuthConfig, create_auth_provider, AuthenticationProvider
 
 
 # Prometheus metrics
@@ -31,10 +34,15 @@ REQUEST_COUNT = Counter(
 )
 REQUEST_DURATION = Histogram("http_request_duration_seconds", "HTTP request duration")
 
+# Global authentication provider instance
+auth_provider: AuthenticationProvider | None = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan management."""
+    global auth_provider
+    
     # Startup
     setup_logging()
     logger = structlog.get_logger()
@@ -51,9 +59,49 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             error=str(e),
         )
 
+    # Initialize authentication provider
+    try:
+        config = AuthConfig()
+        auth_provider = await create_auth_provider(config.provider_type)
+        
+        # Validate provider health
+        health = await auth_provider.health_check()
+        if not health.get("is_healthy", False):
+            logger.error(
+                "Authentication provider health check failed", 
+                health=health,
+                provider_type=config.provider_type.value
+            )
+            raise RuntimeError("Authentication provider unavailable")
+        
+        logger.info(
+            "Authentication provider initialized", 
+            provider_type=config.provider_type.value,
+            version=health.get("version", "unknown"),
+            health=health
+        )
+        
+    except Exception as e:
+        logger.error(
+            "Failed to initialize authentication provider",
+            error=str(e)
+        )
+        # Don't fail startup - allow app to run with degraded functionality
+        auth_provider = None
+
     yield
 
     # Shutdown
+    if auth_provider:
+        try:
+            await auth_provider.cleanup()
+            logger.info("Authentication provider cleanup completed")
+        except Exception as e:
+            logger.warning(
+                "Authentication provider cleanup failed",
+                error=str(e)
+            )
+    
     logger.info("Shutting down application")
 
 
@@ -89,6 +137,56 @@ def create_app() -> FastAPI:
     ) -> Response:
         response = await call_next(request)
         return setup_security_headers(response)
+
+    # Enhanced authentication middleware
+    @app.middleware("http")
+    async def auth_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        """Enhanced authentication middleware with user context injection."""
+        start_time = time.time()
+        
+        # Initialize request state
+        request.state.user = None
+        
+        # Extract and validate token if present and auth provider is available
+        if auth_provider and "authorization" in request.headers:
+            auth_header = request.headers["authorization"]
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]
+                try:
+                    auth_user = await auth_provider.validate_token(token)
+                    request.state.user = auth_user
+                except Exception:
+                    # Token validation failed - let endpoints handle it
+                    pass
+        
+        response = await call_next(request)
+        
+        # Log request completion with timing
+        duration = time.time() - start_time
+        logger = structlog.get_logger()
+        
+        # Enhanced logging with user context
+        log_data = {
+            "method": request.method,
+            "path": str(request.url.path),
+            "status_code": response.status_code,
+            "duration_ms": round(duration * 1000, 2),
+            "user_id": getattr(request.state, "user", {}).id if getattr(request.state, "user", None) else None
+        }
+        
+        # Log to auth provider if available
+        if auth_provider:
+            try:
+                await auth_provider.log_authentication_event(
+                    user_id=log_data["user_id"],
+                    event_type="api_request",
+                    ip_address=request.client.host if request.client else "unknown",
+                    details=log_data
+                )
+            except Exception as e:
+                logger.warning("Failed to log to auth provider", error=str(e))
+        
+        return response
 
     # Request/response logging middleware
     @app.middleware("http")
@@ -126,6 +224,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health_router, prefix="/health", tags=["health"])
     app.include_router(api_router, prefix="/api/v1", tags=["api"])
+    app.include_router(auth_router, prefix="/auth", tags=["authentication"])
 
     # Metrics endpoint
     @app.get("/metrics")
