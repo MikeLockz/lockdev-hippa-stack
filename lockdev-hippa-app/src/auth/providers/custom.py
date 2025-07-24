@@ -18,6 +18,7 @@ from ..interfaces import AuthenticationProvider
 from ..models import AuthUser, AuthToken, AuthResult, TokenType, MFAMethod, UserRole
 from ..exceptions import AuthenticationError
 from ..services import UserService, SessionService, AuditService
+from ..compliance.hipaa import HIPAAComplianceEngine
 from ...models.user import User
 from ...utils.security import (
     get_password_hash, verify_password, create_access_token, 
@@ -938,7 +939,7 @@ class CustomAuthProvider(AuthenticationProvider):
         new_password: str,
         changed_by: Optional[str] = None
     ) -> bool:
-        """Change a user's password."""
+        """Change a user's password with HIPAA compliance enforcement."""
         user_service, session_service, audit_service, db = await self._get_services()
         
         try:
@@ -947,7 +948,7 @@ class CustomAuthProvider(AuthenticationProvider):
             if not auth_user:
                 raise AuthenticationError("User not found")
             
-            # Get database user for password verification
+            # Get database user for password verification and compliance checking
             stmt = select(User).where(User.id == uuid.UUID(user_id))
             result = await db.execute(stmt)
             db_user = result.scalar_one_or_none()
@@ -965,19 +966,72 @@ class CustomAuthProvider(AuthenticationProvider):
                 )
                 raise AuthenticationError("Current password is incorrect")
             
-            # Update password
+            # HIPAA Compliance: Enforce password policy
+            compliance_engine = HIPAAComplianceEngine(db)
+            password_validation = await compliance_engine.enforce_password_policy(db_user, new_password)
+            
+            if not password_validation["success"]:
+                await audit_service.log_authentication_event(
+                    event_type="password_change_failed",
+                    user_id=user_id,
+                    success=False,
+                    metadata={
+                        "reason": "Password policy violation",
+                        "violations": password_validation["violations"]
+                    }
+                )
+                raise AuthenticationError(f"Password does not meet policy requirements: {'; '.join(password_validation['violations'])}")
+            
+            # Update password with history tracking
+            current_password_hash = db_user.hashed_password
+            new_password_hash = get_password_hash(new_password)
+            
+            # Update password history
+            password_history = db_user.password_history or []
+            if current_password_hash not in password_history:
+                password_history.append(current_password_hash)
+            
+            # Keep only the last 12 passwords
+            if len(password_history) > compliance_engine.PASSWORD_HISTORY_COUNT:
+                password_history = password_history[-compliance_engine.PASSWORD_HISTORY_COUNT:]
+            
+            # Set password expiration (90 days from now)
+            password_expires_at = datetime.utcnow() + timedelta(days=compliance_engine.PASSWORD_MAX_AGE_DAYS)
+            
+            # Update user with new password and compliance fields
             await user_service.update_user(
                 user_id,
-                {"password": new_password},
+                {
+                    "password": new_password,
+                    "password_history": password_history,
+                    "password_changed_at": datetime.utcnow(),
+                    "password_expires_at": password_expires_at,
+                    "password_must_change": False  # Clear forced change flag
+                },
                 changed_by
             )
             
-            # Invalidate all existing sessions except current one
+            # Invalidate all existing sessions for security
             await session_service.invalidate_all_user_sessions(user_id, changed_by)
             
+            # Log successful password change with compliance details
             await audit_service.log_password_change(
                 user_id=user_id,
                 changed_by=changed_by,
+                metadata={
+                    "policy_compliant": True,
+                    "password_expires_at": password_expires_at.isoformat(),
+                    "history_updated": True
+                }
+            )
+            
+            logger.info(
+                "Password changed successfully with HIPAA compliance",
+                extra={
+                    "user_id": user_id,
+                    "changed_by": changed_by,
+                    "password_expires_at": password_expires_at.isoformat()
+                }
             )
             
             return True
@@ -996,8 +1050,8 @@ class CustomAuthProvider(AuthenticationProvider):
         reset_token: str,
         new_password: str
     ) -> bool:
-        """Reset a user's password using a reset token."""
-        user_service, session_service, audit_service, _ = await self._get_services()
+        """Reset a user's password using a reset token with HIPAA compliance."""
+        user_service, session_service, audit_service, db = await self._get_services()
         
         try:
             # Validate reset token
@@ -1008,10 +1062,54 @@ class CustomAuthProvider(AuthenticationProvider):
             if validated_token.user_id != user_id:
                 raise AuthenticationError("Invalid reset token")
             
-            # Update password
+            # Get database user for compliance checking
+            stmt = select(User).where(User.id == uuid.UUID(user_id))
+            result = await db.execute(stmt)
+            db_user = result.scalar_one_or_none()
+            
+            if not db_user:
+                raise AuthenticationError("User not found in database")
+            
+            # HIPAA Compliance: Enforce password policy
+            compliance_engine = HIPAAComplianceEngine(db)
+            password_validation = await compliance_engine.enforce_password_policy(db_user, new_password)
+            
+            if not password_validation["success"]:
+                await audit_service.log_authentication_event(
+                    event_type="password_reset_failed",
+                    user_id=user_id,
+                    success=False,
+                    metadata={
+                        "reason": "Password policy violation",
+                        "violations": password_validation["violations"],
+                        "reset_token_id": validated_token.token_id
+                    }
+                )
+                raise AuthenticationError(f"Password does not meet policy requirements: {'; '.join(password_validation['violations'])}")
+            
+            # Update password history
+            current_password_hash = db_user.hashed_password
+            password_history = db_user.password_history or []
+            if current_password_hash and current_password_hash not in password_history:
+                password_history.append(current_password_hash)
+            
+            # Keep only the last 12 passwords
+            if len(password_history) > compliance_engine.PASSWORD_HISTORY_COUNT:
+                password_history = password_history[-compliance_engine.PASSWORD_HISTORY_COUNT:]
+            
+            # Set password expiration and require immediate change for reset passwords
+            password_expires_at = datetime.utcnow() + timedelta(days=compliance_engine.PASSWORD_MAX_AGE_DAYS)
+            
+            # Update password with compliance fields
             await user_service.update_user(
                 user_id,
-                {"password": new_password},
+                {
+                    "password": new_password,
+                    "password_history": password_history,
+                    "password_changed_at": datetime.utcnow(),
+                    "password_expires_at": password_expires_at,
+                    "password_must_change": True  # Force change on next login for reset passwords
+                },
                 "password_reset"
             )
             
@@ -1022,7 +1120,21 @@ class CustomAuthProvider(AuthenticationProvider):
                 event_type="password_reset",
                 user_id=user_id,
                 success=True,
-                metadata={"reset_token_id": validated_token.token_id}
+                metadata={
+                    "reset_token_id": validated_token.token_id,
+                    "policy_compliant": True,
+                    "password_expires_at": password_expires_at.isoformat(),
+                    "must_change_on_login": True
+                }
+            )
+            
+            logger.info(
+                "Password reset successfully with HIPAA compliance",
+                extra={
+                    "user_id": user_id,
+                    "password_expires_at": password_expires_at.isoformat(),
+                    "must_change_on_login": True
+                }
             )
             
             return True
