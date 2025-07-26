@@ -7,6 +7,7 @@ from typing import List
 
 from sqlalchemy import Column, String, Boolean, DateTime, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 import uuid
 
 from ..utils.database import Base
@@ -82,6 +83,14 @@ class User(Base):
     privacy_policy_accepted_at = Column(DateTime, nullable=True)
     hipaa_training_completed_at = Column(DateTime, nullable=True)
     last_security_review = Column(DateTime, nullable=True)
+
+    # Relationships
+    provider_mappings = relationship(
+        "ProviderUserMapping",
+        back_populates="local_user",
+        lazy="select",
+        cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email})>"

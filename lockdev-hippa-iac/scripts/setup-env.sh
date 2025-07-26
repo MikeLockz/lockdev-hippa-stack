@@ -219,11 +219,15 @@ create_access_keys() {
                 echo -e "${BLUE}Secret Access Key: ${CYAN}$secret_key${NC}"
                 echo ""
                 
-                # Generate AWS CLI profile setup commands
-                log_info "To configure AWS CLI profile for deployment:"
-                echo -e "${CYAN}aws configure --profile pulumi-deploy-user-$environment set aws_access_key_id $access_key${NC}"
-                echo -e "${CYAN}aws configure --profile pulumi-deploy-user-$environment set aws_secret_access_key $secret_key${NC}"
-                echo -e "${CYAN}aws configure --profile pulumi-deploy-user-$environment set region $(get_env_config "$environment" "region")${NC}"
+                # Configure AWS CLI profile automatically
+                log_info "Configuring AWS CLI profile: pulumi-deploy-user-$environment"
+                local region=$(get_env_config "$environment" "region")
+                
+                aws configure --profile "pulumi-deploy-user-$environment" set aws_access_key_id "$access_key"
+                aws configure --profile "pulumi-deploy-user-$environment" set aws_secret_access_key "$secret_key"
+                aws configure --profile "pulumi-deploy-user-$environment" set region "$region"
+                
+                log_success "AWS CLI profile configured: pulumi-deploy-user-$environment"
                 echo ""
                 return
             fi
@@ -274,11 +278,15 @@ create_access_keys() {
     echo -e "${BLUE}Secret Access Key: ${CYAN}$secret_key${NC}"
     echo ""
     
-    # Generate AWS CLI profile setup commands
-    log_info "To configure AWS CLI profile for deployment:"
-    echo -e "${CYAN}aws configure --profile pulumi-deploy-user-$environment set aws_access_key_id $access_key${NC}"
-    echo -e "${CYAN}aws configure --profile pulumi-deploy-user-$environment set aws_secret_access_key $secret_key${NC}"
-    echo -e "${CYAN}aws configure --profile pulumi-deploy-user-$environment set region $(get_env_config "$environment" "region")${NC}"
+    # Configure AWS CLI profile automatically
+    log_info "Configuring AWS CLI profile: pulumi-deploy-user-$environment"
+    local region=$(get_env_config "$environment" "region")
+    
+    aws configure --profile "pulumi-deploy-user-$environment" set aws_access_key_id "$access_key"
+    aws configure --profile "pulumi-deploy-user-$environment" set aws_secret_access_key "$secret_key"
+    aws configure --profile "pulumi-deploy-user-$environment" set region "$region"
+    
+    log_success "AWS CLI profile configured: pulumi-deploy-user-$environment"
     echo ""
 }
 

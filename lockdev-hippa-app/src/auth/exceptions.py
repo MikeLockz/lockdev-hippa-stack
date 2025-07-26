@@ -8,6 +8,29 @@ structured error handling while avoiding exposure of sensitive information.
 from typing import Optional, Dict, Any
 
 
+class ConfigurationError(Exception):
+    """Exception raised for authentication configuration errors."""
+    
+    def __init__(
+        self,
+        message: str = "Authentication configuration error",
+        config_key: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        Initialize configuration error.
+        
+        Args:
+            message: Human-readable error message
+            config_key: Configuration key that caused the error
+            details: Additional error context
+        """
+        super().__init__(message)
+        self.message = message
+        self.config_key = config_key
+        self.details = details or {}
+
+
 class AuthenticationError(Exception):
     """Base exception for authentication-related errors."""
     

@@ -231,6 +231,22 @@ class AuthProviderFactory:
             version="1.0.0"
         )
         
+        # Try to register AWS Cognito provider if available
+        try:
+            from .providers.cognito import CognitoAuthProvider
+            self.registry.register_provider(
+                provider_type=AuthProviderType.AWS_COGNITO,
+                provider_class=CognitoAuthProvider,
+                description="AWS Cognito authentication provider with HIPAA compliance",
+                supports_mfa=True,
+                supports_sso=True,
+                version="1.0.0",
+                dependencies=["boto3", "cognitojwt"]
+            )
+            logger.info("Registered AWS Cognito authentication provider")
+        except ImportError as e:
+            logger.warning(f"AWS Cognito provider not available: {str(e)}")
+        
         logger.info("Registered built-in authentication providers")
     
     def register_provider(

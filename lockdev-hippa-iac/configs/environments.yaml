@@ -1,0 +1,135 @@
+# HIPAA Infrastructure Environments Configuration
+# Single source of truth for all environments and their AWS account mappings
+# Supports the security model: root profiles for setup, service profiles for operations
+
+environments:
+  dev:
+    # Root account profile (for creating service users and policies only)
+    root_profile: dev-root
+    # Service user profile (for all Pulumi operations)
+    service_profile: pulumi-deploy-user-dev
+    region: us-east-1
+    environment: development
+    stack_prefix: hipaa
+    
+    # AWS resource tags
+    tags:
+      Environment: development
+      CostCenter: Development
+      Owner: DevTeam
+      Project: HIPAA-Infrastructure
+      ManagedBy: Pulumi
+    
+    # Service user configuration
+    service_user:
+      name: pulumi-deploy-user-dev
+      policy_name: HIPAAInfrastructurePolicy-dev
+      description: "HIPAA infrastructure deployment user for development environment"
+    
+  staging:
+    root_profile: staging-root
+    service_profile: pulumi-deploy-user-staging
+    region: us-east-1
+    environment: staging
+    stack_prefix: hipaa
+    
+    tags:
+      Environment: staging
+      CostCenter: QA
+      Owner: QATeam
+      Project: HIPAA-Infrastructure
+      ManagedBy: Pulumi
+    
+    service_user:
+      name: pulumi-deploy-user-staging
+      policy_name: HIPAAInfrastructurePolicy-staging
+      description: "HIPAA infrastructure deployment user for staging environment"
+    
+  prod:
+    root_profile: prod-root
+    service_profile: pulumi-deploy-user-prod
+    region: us-west-2
+    environment: production
+    stack_prefix: hipaa
+    
+    tags:
+      Environment: production
+      CostCenter: Production
+      Owner: OpsTeam
+      Project: HIPAA-Infrastructure
+      ManagedBy: Pulumi
+    
+    service_user:
+      name: pulumi-deploy-user-prod
+      policy_name: HIPAAInfrastructurePolicy-prod
+      description: "HIPAA infrastructure deployment user for production environment"
+
+# Global settings applied to all environments
+global:
+  # Pulumi backend configuration
+  pulumi_backend: pulumi.com
+  
+  # Naming conventions
+  service_user_prefix: pulumi-deploy-user
+  policy_prefix: HIPAAInfrastructurePolicy
+  
+  # Security settings
+  enable_mfa: false  # Set to true for production environments
+  max_session_duration: 3600  # 1 hour
+  
+  # Deployment settings
+  auto_approve: false  # Never auto-approve by default
+  parallel_deploys: false  # Deploy environments sequentially
+  
+  # Resource configuration
+  default_instance_type: t3.micro
+  enable_encryption: true
+  backup_retention_days: 30
+  
+  # Monitoring and compliance
+  enable_cloudtrail: true
+  enable_guardduty: true
+  enable_config: true
+  enable_vpc_flow_logs: true
+  
+  # Cost management
+  enable_cost_alerts: true
+  monthly_budget_limit: 500  # USD
+
+# Policy templates for service users
+# These define the minimum permissions needed for Pulumi operations
+policy_template:
+  version: "2012-10-17"
+  
+  # Core AWS services needed for HIPAA infrastructure
+  required_services:
+    - ec2  # VPC, security groups, load balancers
+    - ecs  # Container orchestration
+    - rds  # Database services
+    - s3   # Storage and backups
+    - iam  # Limited IAM operations (roles, policies)
+    - kms  # Encryption key management
+    - logs # CloudWatch logging
+    - monitoring # CloudWatch metrics
+    - application-autoscaling # ECS auto-scaling
+    - elasticloadbalancing # ALB/NLB
+    - ecr  # Container registry
+    - secretsmanager # Secrets management
+    - ssm  # Parameter store
+  
+  # Operations that should be restricted
+  restricted_operations:
+    - "iam:CreateUser"      # Only root can create users
+    - "iam:DeleteUser"      # Only root can delete users
+    - "iam:CreateAccessKey" # Only root can create access keys
+    - "organizations:*"     # No organization management
+    - "account:*"           # No account-level changes
+    - "billing:*"           # No billing access
+  
+  # Resource-level restrictions
+  resource_patterns:
+    - "arn:aws:*:*:*:hipaa-*"      # Only resources with hipaa prefix
+    - "arn:aws:*:*:*:pulumi-*"     # Pulumi-managed resources
+    - "arn:aws:*:*:*:development-*" # Environment-specific resources
+    - "arn:aws:*:*:*:staging-*"
+    - "arn:aws:*:*:*:production-*"
