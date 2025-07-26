@@ -1,5 +1,5 @@
 {
-    "Version": "2012-10-17", 
+    "Version": "2012-10-17",
     "Statement": [
         {
             "Sid": "EC2FullAccess",
@@ -94,7 +94,7 @@
             "Resource": "*"
         },
         {
-            "Sid": "UseExistingRoles",
+            "Sid": "IAMFullAccessForInfrastructure",
             "Effect": "Allow",
             "Action": [
                 "iam:GetRole",
@@ -102,7 +102,94 @@
                 "iam:ListAttachedRolePolicies",
                 "iam:GetRolePolicy",
                 "iam:ListRolePolicies",
-                "iam:PassRole"
+                "iam:PassRole",
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:UpdateRole",
+                "iam:TagRole",
+                "iam:UntagRole",
+                "iam:CreatePolicy",
+                "iam:DeletePolicy",
+                "iam:GetPolicy",
+                "iam:ListPolicies",
+                "iam:GetPolicyVersion",
+                "iam:ListPolicyVersions",
+                "iam:CreatePolicyVersion",
+                "iam:DeletePolicyVersion",
+                "iam:AttachRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:PutRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:UpdateAssumeRolePolicy"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringLike": {
+                    "iam:RoleName": [
+                        "hipaa-*",
+                        "*-role",
+                        "*-execution-role", 
+                        "cloudtrail-*",
+                        "config-*",
+                        "guardduty-*",
+                        "ecs-*",
+                        "cloudwatch-*",
+                        "*task*",
+                        "*service*"
+                    ],
+                    "iam:PolicyName": [
+                        "hipaa-*",
+                        "*-policy",
+                        "HIPAAInfrastructurePolicy-*",
+                        "cloudtrail-*",
+                        "config-*",
+                        "ecs-*",
+                        "cloudwatch-*",
+                        "*task*",
+                        "*service*",
+                        "*s3*"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "ApplicationAutoScalingAccess",
+            "Effect": "Allow",
+            "Action": [
+                "application-autoscaling:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "SecretsManagerAccess",
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "SSMParameterAccess",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "TaggingAccess",
+            "Effect": "Allow",
+            "Action": [
+                "tag:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "STSAccess",
+            "Effect": "Allow",
+            "Action": [
+                "sts:GetCallerIdentity",
+                "sts:AssumeRole"
             ],
             "Resource": "*"
         }
