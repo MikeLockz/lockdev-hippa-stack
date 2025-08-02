@@ -50,7 +50,9 @@
       "Bash(./smart-cleanup.sh:*)",
       "Bash(pip install:*)",
       "Bash(bash:*)",
-      "Bash(./enhanced-cleanup.sh:*)"
+      "Bash(./enhanced-cleanup.sh:*)",
+      "Bash(AWS_PROFILE=dev-root pulumi destroy --yes)",
+      "Bash(AWS_PROFILE=dev-root pulumi destroy --yes --skip-preview)"
     ],
     "deny": []
   }
