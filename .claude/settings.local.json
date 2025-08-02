@@ -39,7 +39,18 @@
       "Bash(./bootstrap/deploy-bootstrap.sh:*)",
       "Bash(AWS_PROFILE=dev-root make deploy-dev)",
       "Bash(./scripts/setup-env.sh:*)",
-      "Bash(AWS_PROFILE=dev-root pulumi stack ls)"
+      "Bash(AWS_PROFILE=dev-root pulumi stack ls)",
+      "Bash(AWS_PROFILE=pulumi-deploy-user-dev pulumi import --yes aws:iam/role:Role ecs-task-role hipaa-ecs-task-role)",
+      "Bash(AWS_PROFILE=pulumi-deploy-user-dev pulumi import --yes aws:iam/role:Role cloudwatch-role hipaa-cloudwatch-role)",
+      "Bash(AWS_PROFILE=pulumi-deploy-user-dev pulumi import --yes aws:iam/role:Role cloudtrail-role hipaa-cloudtrail-role)",
+      "Bash(ENVIRONMENT=dev FORCE=true ./scripts/deploy.sh -o deploy)",
+      "Bash(AWS_PROFILE=pulumi-deploy-user-dev pulumi import --yes aws:iam/role:Role config-role hipaa-config-role)",
+      "Bash(AWS_PROFILE=pulumi-deploy-user-dev pulumi import --yes aws:sns/topic:Topic guardduty-findings-topic arn:aws:sns:us-east-1:067518243012:hipaa-guardduty-findings)",
+      "Bash(AWS_PROFILE=pulumi-deploy-user-dev pulumi import --yes aws:cloudwatch/logGroup:LogGroup guardduty-log-group /aws/guardduty/findings)",
+      "Bash(./smart-cleanup.sh:*)",
+      "Bash(pip install:*)",
+      "Bash(bash:*)",
+      "Bash(./enhanced-cleanup.sh:*)"
     ],
     "deny": []
   }

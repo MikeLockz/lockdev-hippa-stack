@@ -190,6 +190,44 @@ setup_pulumi_stack() {
     log_success "Pulumi stack configured"
 }
 
+# Setup database password configuration
+setup_database_password() {
+    log_step "Configuring database password"
+    
+    # Use the project name from Pulumi.yaml for configuration key
+    local project_name="lockdev-hippa-iac"
+    local config_key="${project_name}:db_password"
+    
+    # Check if database password is already set
+    if poetry run pulumi config get --json "$config_key" >/dev/null 2>&1; then
+        log_success "Database password already configured"
+        return 0
+    fi
+    
+    # Generate secure database password
+    local db_password
+    if command -v openssl >/dev/null 2>&1; then
+        db_password=$(openssl rand -base64 32)
+    elif command -v python3 >/dev/null 2>&1; then
+        db_password=$(python3 -c "import secrets, string; print(''.join(secrets.choice(string.ascii_letters + string.digits) for i in range(32)))")
+    else
+        # Fallback method
+        db_password=$(head -c 1000 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+    fi
+    
+    if [[ -z "$db_password" ]]; then
+        die "Failed to generate database password"
+    fi
+    
+    # Set the database password as a secret
+    if is_dry_run; then
+        log_info "[DRY RUN] Would set database password secret: $config_key"
+    else
+        poetry run pulumi config set --secret "$config_key" "$db_password"
+        log_success "Database password configured as secret: $config_key"
+    fi
+}
+
 # Confirmation prompt
 confirm_action() {
     local message="$1"

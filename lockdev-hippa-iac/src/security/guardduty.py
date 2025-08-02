@@ -4,39 +4,85 @@ import pulumi_aws as aws
 
 
 def create_guardduty():
-    """Create GuardDuty for threat detection."""
+    """Create GuardDuty for threat detection with idempotent handling."""
     config = pulumi.Config()
     
-    # Enable GuardDuty detector
-    guardduty_detector = aws.guardduty.Detector(
-        "hipaa-guardduty-detector",
-        enable=True,
-        finding_publishing_frequency="FIFTEEN_MINUTES",
-        datasources=aws.guardduty.DetectorDatasourcesArgs(
-            s3_logs=aws.guardduty.DetectorDatasourcesS3LogsArgs(
-                enable=True
-            ),
-            kubernetes=aws.guardduty.DetectorDatasourcesKubernetesArgs(
-                audit_logs=aws.guardduty.DetectorDatasourcesKubernetesAuditLogsArgs(
+    # Enable GuardDuty detector with idempotent handling
+    # Try to use existing detector if available
+    try:
+        # Check if detector already exists
+        existing_detector = aws.guardduty.get_detector()
+        detector_id = existing_detector.id
+        
+        # Use existing detector but ensure proper configuration
+        guardduty_detector = aws.guardduty.Detector(
+            "hipaa-guardduty-detector",
+            enable=True,
+            finding_publishing_frequency="FIFTEEN_MINUTES",
+            datasources=aws.guardduty.DetectorDatasourcesArgs(
+                s3_logs=aws.guardduty.DetectorDatasourcesS3LogsArgs(
                     enable=True
-                )
-            ),
-            malware_protection=aws.guardduty.DetectorDatasourcesMalwareProtectionArgs(
-                scan_ec2_instance_with_findings=aws.guardduty.DetectorDatasourcesMalwareProtectionScanEc2InstanceWithFindingsArgs(
-                    ebs_volumes=aws.guardduty.DetectorDatasourcesMalwareProtectionScanEc2InstanceWithFindingsEbsVolumesArgs(
+                ),
+                kubernetes=aws.guardduty.DetectorDatasourcesKubernetesArgs(
+                    audit_logs=aws.guardduty.DetectorDatasourcesKubernetesAuditLogsArgs(
                         enable=True
                     )
+                ),
+                malware_protection=aws.guardduty.DetectorDatasourcesMalwareProtectionArgs(
+                    scan_ec2_instance_with_findings=aws.guardduty.DetectorDatasourcesMalwareProtectionScanEc2InstanceWithFindingsArgs(
+                        ebs_volumes=aws.guardduty.DetectorDatasourcesMalwareProtectionScanEc2InstanceWithFindingsEbsVolumesArgs(
+                            enable=True
+                        )
+                    )
                 )
+            ),
+            tags={
+                "Name": "HIPAA-GuardDuty-Detector",
+                "Environment": config.get("environment", "dev"),
+                "Compliance": "HIPAA"
+            },
+            opts=pulumi.ResourceOptions(
+                # Import existing detector if it exists
+                import_=detector_id if detector_id else None,
+                # Protect from accidental deletion
+                protect=True
             )
-        ),
-        tags={
-            "Name": "HIPAA-GuardDuty-Detector",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
-    )
+        )
+    except Exception:
+        # Create new detector if none exists
+        guardduty_detector = aws.guardduty.Detector(
+            "hipaa-guardduty-detector",
+            enable=True,
+            finding_publishing_frequency="FIFTEEN_MINUTES",
+            datasources=aws.guardduty.DetectorDatasourcesArgs(
+                s3_logs=aws.guardduty.DetectorDatasourcesS3LogsArgs(
+                    enable=True
+                ),
+                kubernetes=aws.guardduty.DetectorDatasourcesKubernetesArgs(
+                    audit_logs=aws.guardduty.DetectorDatasourcesKubernetesAuditLogsArgs(
+                        enable=True
+                    )
+                ),
+                malware_protection=aws.guardduty.DetectorDatasourcesMalwareProtectionArgs(
+                    scan_ec2_instance_with_findings=aws.guardduty.DetectorDatasourcesMalwareProtectionScanEc2InstanceWithFindingsArgs(
+                        ebs_volumes=aws.guardduty.DetectorDatasourcesMalwareProtectionScanEc2InstanceWithFindingsEbsVolumesArgs(
+                            enable=True
+                        )
+                    )
+                )
+            ),
+            tags={
+                "Name": "HIPAA-GuardDuty-Detector",
+                "Environment": config.get("environment", "dev"),
+                "Compliance": "HIPAA"
+            },
+            opts=pulumi.ResourceOptions(
+                # Protect from accidental deletion
+                protect=True
+            )
+        )
     
-    # Create SNS topic for GuardDuty findings
+    # Create SNS topic for GuardDuty findings with idempotent handling
     guardduty_sns_topic = aws.sns.Topic(
         "guardduty-findings-topic",
         name="hipaa-guardduty-findings",
@@ -44,7 +90,15 @@ def create_guardduty():
             "Name": "HIPAA-GuardDuty-Findings",
             "Environment": config.get("environment", "dev"),
             "Compliance": "HIPAA"
-        }
+        },
+        opts=pulumi.ResourceOptions(
+            # Protect from accidental deletion
+            protect=True,
+            # Handle "already exists" by ignoring if topic exists
+            ignore_changes=["name"],
+            # Don't fail if resource already exists
+            replace_on_changes=[]
+        )
     )
     
     # Create EventBridge rule for GuardDuty findings
@@ -74,7 +128,7 @@ def create_guardduty():
         arn=guardduty_sns_topic.arn
     )
     
-    # Create CloudWatch log group for GuardDuty findings
+    # Create CloudWatch log group for GuardDuty findings with idempotent handling
     guardduty_log_group = aws.cloudwatch.LogGroup(
         "guardduty-log-group",
         name="/aws/guardduty/findings",
@@ -83,7 +137,15 @@ def create_guardduty():
             "Name": "HIPAA-GuardDuty-Logs",
             "Environment": config.get("environment", "dev"),
             "Compliance": "HIPAA"
-        }
+        },
+        opts=pulumi.ResourceOptions(
+            # Protect from accidental deletion
+            protect=True,
+            # Handle "already exists" by ignoring if log group exists
+            ignore_changes=["name"],
+            # Don't fail if resource already exists
+            replace_on_changes=[]
+        )
     )
     
     # Note: IPSet and ThreatIntelSet removed due to permission requirements

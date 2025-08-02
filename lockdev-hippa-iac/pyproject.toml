@@ -4,12 +4,15 @@ version = "0.1.0"
 description = "HIPAA compliant infrastructure"
 authors = ["System Administrator <admin@example.com>"]
 readme = "README.md"
+packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
 pulumi = "^3.0.0"
 pulumi-aws = "^6.0.0"
 pulumi-gcp = "^7.0.0"
+rich = "^13.0.0"
+textual = "^0.85.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"

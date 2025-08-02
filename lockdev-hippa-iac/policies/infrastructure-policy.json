@@ -120,7 +120,8 @@
                 "iam:DetachRolePolicy",
                 "iam:PutRolePolicy",
                 "iam:DeleteRolePolicy",
-                "iam:UpdateAssumeRolePolicy"
+                "iam:UpdateAssumeRolePolicy",
+                "iam:CreateServiceLinkedRole"
             ],
             "Resource": "*",
             "Condition": {
@@ -151,6 +152,22 @@
                     ]
                 }
             }
+        },
+        {
+            "Sid": "ConfigServiceSpecificAccess",
+            "Effect": "Allow",
+            "Action": [
+                "config:PutConfigurationRecorder",
+                "config:PutDeliveryChannel",
+                "config:StartConfigurationRecorder",
+                "config:StopConfigurationRecorder",
+                "config:DeleteConfigurationRecorder",
+                "config:DeleteDeliveryChannel",
+                "config:DescribeConfigurationRecorders",
+                "config:DescribeDeliveryChannels",
+                "config:DescribeConfigurationRecorderStatus"
+            ],
+            "Resource": "*"
         },
         {
             "Sid": "ApplicationAutoScalingAccess",

@@ -152,6 +152,9 @@ deploy_infrastructure() {
     # Set additional Pulumi configuration
     poetry run pulumi config set account_id "$account_id"
     
+    # Ensure database password is configured
+    setup_database_password
+    
     # Set tags from environment configuration
     local tags=$(yq eval ".environments.$environment.tags // {}" "$ENVIRONMENTS_CONFIG" -o json)
     if [[ "$tags" != "null" && "$tags" != "{}" ]]; then

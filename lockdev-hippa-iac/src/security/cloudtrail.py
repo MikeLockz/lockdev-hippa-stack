@@ -2,6 +2,12 @@
 import pulumi
 import pulumi_aws as aws
 import json
+from utils.iam_import import (
+    get_or_import_iam_role,
+    attach_policy_to_role,
+    create_iam_policy,
+    get_standard_cloudtrail_policy
+)
 
 
 def create_cloudtrail():
@@ -109,27 +115,13 @@ def create_cloudtrail():
         }
     )
     
-    # Create CloudWatch role for CloudTrail
-    cloudtrail_role = aws.iam.Role(
+    # Create CloudWatch role for CloudTrail - import if exists, create if not
+    cloudtrail_role = get_or_import_iam_role(
         "cloudtrail-role",
-        name="hipaa-cloudtrail-role",
-        assume_role_policy=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Action": "sts:AssumeRole",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "cloudtrail.amazonaws.com"
-                    }
-                }
-            ]
-        }),
-        tags={
-            "Name": "HIPAA-CloudTrail-Role",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
+        "hipaa-cloudtrail-role",
+        "cloudtrail.amazonaws.com",
+        "HIPAA-CloudTrail-Role",
+        config.get("environment", "dev")
     )
     
     # Create CloudWatch policy for CloudTrail
@@ -137,36 +129,27 @@ def create_cloudtrail():
         "cloudtrail-policy",
         name="hipaa-cloudtrail-policy",
         description="Policy for HIPAA CloudTrail logging",
-        policy=pulumi.Output.all(cloudtrail_log_group.arn).apply(
-            lambda args: json.dumps({
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": [
-                            "logs:CreateLogGroup",
-                            "logs:CreateLogStream",
-                            "logs:PutLogEvents",
-                            "logs:DescribeLogGroups",
-                            "logs:DescribeLogStreams"
-                        ],
-                        "Resource": f"{args[0]}*"
-                    }
-                ]
-            })
+        policy=cloudtrail_log_group.arn.apply(
+            lambda arn: json.dumps(get_standard_cloudtrail_policy(arn))
         ),
         tags={
             "Name": "HIPAA-CloudTrail-Policy",
             "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
+            "Compliance": "HIPAA",
+            "ManagedBy": "Pulumi"
+        },
+        opts=pulumi.ResourceOptions(
+            protect=True,
+            ignore_changes=["name"]
+        )
     )
     
     # Attach policy to role
-    aws.iam.RolePolicyAttachment(
+    attach_policy_to_role(
         "cloudtrail-role-policy-attachment",
-        role=cloudtrail_role.name,
-        policy_arn=cloudtrail_policy.arn
+        cloudtrail_role,
+        cloudtrail_policy.arn,
+        "hipaa-cloudtrail-policy"
     )
     
     # Create CloudTrail

@@ -19,6 +19,7 @@ from security import (
 
 from compute.ecs import create_ecs_task_definition, create_ecs_service
 from compute.alb import create_application_load_balancer, create_ecr_repository
+from utils.idempotent import IdempotentResourceManager
 
 
 def create_vpc() -> Dict[str, Any]:
@@ -232,11 +233,11 @@ def create_rds_instance(private_subnets: List[aws.ec2.Subnet], security_group: a
         }
     )
     
-    # Create parameter group
-    parameter_group = aws.rds.ParameterGroup(
-        "hipaa-db-parameter-group",
+    # Create parameter group using idempotent manager
+    idempotent_manager = IdempotentResourceManager(config)
+    parameter_group = idempotent_manager.create_rds_parameter_group(
+        "hipaa-postgres-params",
         family="postgres16",
-        name="hipaa-postgres-params",
         description="Parameter group for HIPAA compliant PostgreSQL",
         parameters=[
             aws.rds.ParameterGroupParameterArgs(

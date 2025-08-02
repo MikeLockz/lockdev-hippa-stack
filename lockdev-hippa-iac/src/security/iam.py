@@ -2,181 +2,88 @@
 import pulumi
 import pulumi_aws as aws
 import json
+from utils.iam_import import (
+    get_or_import_iam_role,
+    attach_policy_to_role,
+    create_iam_policy,
+    get_standard_ecs_task_execution_policy,
+    get_standard_ecs_task_policy,
+    get_standard_cloudwatch_policy
+)
 
 
 def create_iam_roles():
     """Create IAM roles with least privilege access."""
     config = pulumi.Config()
+    environment = config.get("environment", "dev")
     
-    # ECS Task Execution Role
-    ecs_task_execution_role = aws.iam.Role(
+    # ECS Task Execution Role - import if exists, create if not
+    ecs_task_execution_role = get_or_import_iam_role(
         "ecs-task-execution-role",
-        name="hipaa-ecs-task-execution-role",
-        assume_role_policy=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Action": "sts:AssumeRole",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "ecs-tasks.amazonaws.com"
-                    }
-                }
-            ]
-        }),
-        tags={
-            "Name": "HIPAA-ECS-Task-Execution-Role",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
+        "hipaa-ecs-task-execution-role",
+        "ecs-tasks.amazonaws.com",
+        "HIPAA-ECS-Task-Execution-Role",
+        environment
     )
     
     # Attach AWS managed policy for ECS task execution
-    aws.iam.RolePolicyAttachment(
+    attach_policy_to_role(
         "ecs-task-execution-role-policy",
-        role=ecs_task_execution_role.name,
-        policy_arn="arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        ecs_task_execution_role,
+        "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+        "AmazonECSTaskExecutionRolePolicy"
     )
     
-    # ECS Task Role
-    ecs_task_role = aws.iam.Role(
+    # ECS Task Role - import if exists, create if not
+    ecs_task_role = get_or_import_iam_role(
         "ecs-task-role",
-        name="hipaa-ecs-task-role",
-        assume_role_policy=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Action": "sts:AssumeRole",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "ecs-tasks.amazonaws.com"
-                    }
-                }
-            ]
-        }),
-        tags={
-            "Name": "HIPAA-ECS-Task-Role",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
+        "hipaa-ecs-task-role",
+        "ecs-tasks.amazonaws.com",
+        "HIPAA-ECS-Task-Role",
+        environment
     )
     
     # Custom policy for ECS task
-    ecs_task_policy = aws.iam.Policy(
+    ecs_task_policy = create_iam_policy(
         "ecs-task-policy",
-        name="hipaa-ecs-task-policy",
-        description="Policy for HIPAA ECS tasks",
-        policy=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "logs:CreateLogGroup",
-                        "logs:CreateLogStream",
-                        "logs:PutLogEvents"
-                    ],
-                    "Resource": "arn:aws:logs:*:*:*"
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "kms:Decrypt",
-                        "kms:GenerateDataKey"
-                    ],
-                    "Resource": "*"
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "secretsmanager:GetSecretValue",
-                        "secretsmanager:DescribeSecret"
-                    ],
-                    "Resource": [
-                        "arn:aws:secretsmanager:*:*:secret:hipaa/*"
-                    ]
-                }
-            ]
-        }),
-        tags={
-            "Name": "HIPAA-ECS-Task-Policy",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
+        "hipaa-ecs-task-policy",
+        get_standard_ecs_task_policy(),
+        "Policy for HIPAA ECS tasks",
+        environment
     )
     
     # Attach custom policy to ECS task role
-    aws.iam.RolePolicyAttachment(
+    attach_policy_to_role(
         "ecs-task-role-policy-attachment",
-        role=ecs_task_role.name,
-        policy_arn=ecs_task_policy.arn
+        ecs_task_role,
+        ecs_task_policy.arn,
+        "hipaa-ecs-task-policy"
     )
     
-    # CloudWatch Role for monitoring
-    cloudwatch_role = aws.iam.Role(
+    # CloudWatch Role for monitoring - import if exists, create if not
+    cloudwatch_role = get_or_import_iam_role(
         "cloudwatch-role",
-        name="hipaa-cloudwatch-role",
-        assume_role_policy=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Action": "sts:AssumeRole",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "events.amazonaws.com"
-                    }
-                }
-            ]
-        }),
-        tags={
-            "Name": "HIPAA-CloudWatch-Role",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
+        "hipaa-cloudwatch-role",
+        "events.amazonaws.com",
+        "HIPAA-CloudWatch-Role",
+        environment
     )
     
     # CloudWatch policy
-    cloudwatch_policy = aws.iam.Policy(
+    cloudwatch_policy = create_iam_policy(
         "cloudwatch-policy",
-        name="hipaa-cloudwatch-policy",
-        description="Policy for HIPAA CloudWatch monitoring",
-        policy=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "logs:CreateLogGroup",
-                        "logs:CreateLogStream",
-                        "logs:PutLogEvents",
-                        "logs:DescribeLogGroups",
-                        "logs:DescribeLogStreams"
-                    ],
-                    "Resource": "*"
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "cloudwatch:PutMetricData",
-                        "cloudwatch:GetMetricStatistics",
-                        "cloudwatch:ListMetrics"
-                    ],
-                    "Resource": "*"
-                }
-            ]
-        }),
-        tags={
-            "Name": "HIPAA-CloudWatch-Policy",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
+        "hipaa-cloudwatch-policy",
+        get_standard_cloudwatch_policy(),
+        "Policy for HIPAA CloudWatch monitoring",
+        environment
     )
     
     # Attach CloudWatch policy
-    aws.iam.RolePolicyAttachment(
+    attach_policy_to_role(
         "cloudwatch-role-policy-attachment",
-        role=cloudwatch_role.name,
-        policy_arn=cloudwatch_policy.arn
+        cloudwatch_role,
+        cloudwatch_policy.arn,
+        "hipaa-cloudwatch-policy"
     )
     
     return {

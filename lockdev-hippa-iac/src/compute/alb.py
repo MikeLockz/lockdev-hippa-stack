@@ -2,6 +2,10 @@
 import pulumi
 import pulumi_aws as aws
 from typing import List
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils.idempotent import IdempotentResourceManager
 
 
 def create_application_load_balancer(
@@ -174,10 +178,11 @@ def create_application_load_balancer(
 
 
 def create_ecr_repository() -> aws.ecr.Repository:
-    """Create ECR repository for container images."""
+    """Create ECR repository for container images with idempotent handling."""
     config = pulumi.Config()
+    idempotent_manager = IdempotentResourceManager(config)
     
-    # Create ECR repository
+    # Create ECR repository with explicit configuration to avoid import issues
     repository = aws.ecr.Repository(
         "hipaa-app-repo",
         name="hipaa-app",
@@ -189,7 +194,13 @@ def create_ecr_repository() -> aws.ecr.Repository:
             "Name": "HIPAA-App-Repository",
             "Environment": config.get("environment", "dev"),
             "Compliance": "HIPAA"
-        }
+        },
+        opts=pulumi.ResourceOptions(
+            # Protect from accidental deletion
+            protect=True,
+            # Handle existing repository conflicts
+            ignore_changes=["name"]
+        )
     )
     
     # Create lifecycle policy

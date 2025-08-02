@@ -159,6 +159,29 @@ cleanup_infrastructure() {
     if poetry run pulumi stack ls | grep -q "^$stack_name"; then
         poetry run pulumi stack select "$stack_name"
         
+        # Unprotect all protected resources before destruction
+        log_info "Unprotecting resources to allow cleanup..."
+        
+        # Get list of protected resources
+        local protected_resources=$(poetry run pulumi stack export | jq -r '.deployment.resources[] | select(.protect == true) | .urn' 2>/dev/null || echo "")
+        
+        if [[ -n "$protected_resources" ]]; then
+            log_info "Unprotecting $(echo "$protected_resources" | wc -l) protected resources..."
+            
+            # Unprotect each resource
+            echo "$protected_resources" | while read -r urn; do
+                if [[ -n "$urn" ]]; then
+                    log_info "Unprotecting: $urn"
+                    poetry run pulumi state unprotect --yes "$urn" 2>/dev/null || log_warning "Could not unprotect: $urn"
+                fi
+            done
+            
+            log_success "Resource unprotection completed"
+        else
+            log_info "No protected resources found"
+        fi
+        
+        # Now destroy the infrastructure
         if is_force_mode; then
             poetry run pulumi destroy --yes
         else
@@ -790,6 +813,13 @@ main() {
     # Validate prerequisites
     check_prerequisites
     validate_cleanup_prerequisites
+    
+    # Check for jq dependency for unprotecting resources
+    if ! command -v jq &> /dev/null; then
+        log_error "jq is required for unprotecting resources but is not installed."
+        log_info "Install jq with: brew install jq (macOS) or apt-get install jq (Ubuntu/Debian)"
+        exit 1
+    fi
     
     # Create environments config if it doesn't exist
     if [[ ! -f "$ENVIRONMENTS_CONFIG" ]]; then

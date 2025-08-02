@@ -1,7 +1,7 @@
 # HIPAA-Compliant Infrastructure Stack Unified Makefile
 # Single Makefile for both application and infrastructure operations
 
-.PHONY: help install install-prerequisites install-python install-poetry install-pulumi install-aws-cli install-docker install-security-tools install-deps setup verify clean format lint test deploy
+.PHONY: help tui install install-prerequisites install-python install-poetry install-pulumi install-aws-cli install-docker install-security-tools install-deps setup verify clean format lint test deploy
 
 # Default target
 help: ## Show this help message
@@ -17,7 +17,9 @@ help: ## Show this help message
 	@echo "  make verify               # Verify all installations"
 	@echo ""
 	@echo "Infrastructure:"
-	@echo "  make preview-dev          # Preview dev infrastructure changes"
+	@echo "  make setup-credentials    # Interactive AWS credentials setup"
+	@echo "  make setup-env-dev        # Setup dev environment (auto-handles credentials)"
+	@echo "  make preview-dev          # Preview dev infrastructure changes" 
 	@echo "  make deploy-dev           # Deploy dev infrastructure"
 	@echo "  make clean-dev            # Destroy dev infrastructure"
 	@echo ""
@@ -25,6 +27,42 @@ help: ## Show this help message
 	@echo "  make dev-app              # Start app development environment"
 	@echo "  make test                 # Run all tests"
 	@echo "  make lint                 # Format and lint code"
+	@echo "  make tui                  # Launch Terminal User Interface"
+	@echo "  make start                # Launch modern Textual TUI"
+
+tui: ## Launch Terminal User Interface for make commands (Rich version)
+	@echo "🖥️  Starting HIPAA Infrastructure Stack TUI (Rich)..."
+	@if [ -d "lockdev-hippa-app" ]; then \
+		cd lockdev-hippa-app && poetry run python ../tui_make.py; \
+	elif [ -d "lockdev-hippa-iac" ]; then \
+		cd lockdev-hippa-iac && poetry run python ../tui_make.py; \
+	else \
+		python3 tui_make.py; \
+	fi
+
+start: ## Launch Textual TUI for make commands (Modern interface)
+	@echo "🚀 Starting HIPAA Infrastructure Stack TUI (Textual)..."
+	@if command -v poetry >/dev/null 2>&1; then \
+		if [ -f "pyproject.toml" ]; then \
+			poetry run python tui_make_textual.py; \
+		elif [ -d "lockdev-hippa-app" ]; then \
+			cd lockdev-hippa-app && poetry run python ../tui_make_textual.py; \
+		elif [ -d "lockdev-hippa-iac" ]; then \
+			cd lockdev-hippa-iac && poetry run python ../tui_make_textual.py; \
+		else \
+			python3 tui_make_textual.py; \
+		fi \
+	else \
+		if ! command -v pip3 >/dev/null 2>&1; then \
+			echo "❌ Python 3 and pip3 are required. Please install Python 3.8+"; \
+			exit 1; \
+		fi; \
+		echo "📦 Installing Textual..."; \
+		pip3 install textual; \
+		python3 tui_make_textual.py; \
+	fi
+
+
 
 # Detect OS for platform-specific installations
 UNAME_S := $(shell uname -s)
@@ -422,19 +460,44 @@ format-app: ## Format application code
 # =========================================
 
 # Phase 1: Environment Setup (uses root credentials)
+setup-credentials: ## Interactive AWS credentials setup for all environments
+	@echo "🔑 Setting up AWS credentials..."
+	@chmod +x lockdev-hippa-iac/scripts/*.sh
+	@cd lockdev-hippa-iac && ./scripts/setup-credentials.sh --interactive
+
+setup-credentials-dev: ## Setup AWS credentials for development environment
+	@echo "🔑 Setting up AWS credentials for development..."
+	@chmod +x lockdev-hippa-iac/scripts/*.sh
+	@cd lockdev-hippa-iac && ./scripts/setup-credentials.sh -e dev
+
 setup-env-dev: ## Setup development environment (Phase 1: Root → Service User)
 	@echo "🔧 Phase 1: Setting up development environment..."
 	@chmod +x lockdev-hippa-iac/scripts/*.sh
+	@echo "Checking AWS credentials first..."
+	@if ! aws sts get-caller-identity --profile dev-root 2>/dev/null; then \
+		echo "AWS credentials not configured. Running interactive setup..."; \
+		cd lockdev-hippa-iac && ./scripts/setup-credentials.sh -e dev; \
+	fi
 	@cd lockdev-hippa-iac && ENVIRONMENT=dev ./scripts/setup-env.sh
 
 setup-env-staging: ## Setup staging environment (Phase 1: Root → Service User)
 	@echo "🔧 Phase 1: Setting up staging environment..."
 	@chmod +x lockdev-hippa-iac/scripts/*.sh
+	@echo "Checking AWS credentials first..."
+	@if ! aws sts get-caller-identity --profile staging-root 2>/dev/null; then \
+		echo "AWS credentials not configured. Running interactive setup..."; \
+		cd lockdev-hippa-iac && ./scripts/setup-credentials.sh -e staging; \
+	fi
 	@cd lockdev-hippa-iac && ENVIRONMENT=staging ./scripts/setup-env.sh
 
 setup-env-prod: ## Setup production environment (Phase 1: Root → Service User)
 	@echo "🔧 Phase 1: Setting up production environment..."
 	@chmod +x lockdev-hippa-iac/scripts/*.sh
+	@echo "Checking AWS credentials first..."
+	@if ! aws sts get-caller-identity --profile prod-root 2>/dev/null; then \
+		echo "AWS credentials not configured. Running interactive setup..."; \
+		cd lockdev-hippa-iac && ./scripts/setup-credentials.sh -e prod; \
+	fi
 	@cd lockdev-hippa-iac && ENVIRONMENT=prod ./scripts/setup-env.sh
 
 setup-env-all: setup-env-dev setup-env-staging setup-env-prod ## Setup all environments
@@ -503,15 +566,15 @@ preview-prod: ## Preview production infrastructure changes
 
 deploy-dev: ## Smart deploy to development (auto-setup + deploy)
 	@echo "🤖 Smart deployment to development environment..."
-	@cd lockdev-hippa-iac && ENVIRONMENT=dev ./scripts/deploy.sh -o deploy
+	@cd lockdev-hippa-iac && ENVIRONMENT=dev FORCE=true ./scripts/deploy.sh -o deploy
 
 deploy-staging: ## Smart deploy to staging environment (auto-setup + deploy)
 	@echo "🤖 Smart deployment to staging environment..."
-	@cd lockdev-hippa-iac && ./scripts/deploy.sh -o deploy
+	@cd lockdev-hippa-iac && ENVIRONMENT=staging FORCE=true ./scripts/deploy.sh -o deploy
 
 deploy-prod: ## Smart deploy to production environment (auto-setup + deploy)
 	@echo "🤖 Smart deployment to production environment..."
-	@cd lockdev-hippa-iac && ./scripts/deploy.sh -o deploy
+	@cd lockdev-hippa-iac && ENVIRONMENT=prod FORCE=true ./scripts/deploy.sh -o deploy
 
 # Dry-run deployments (safe testing)
 deploy-dev-dry: ## Dry run deployment to development
@@ -528,38 +591,78 @@ deploy-prod-dry: ## Dry run deployment to production
 
 # Infrastructure Cleanup (safe destruction)
 clean-dev: ## Destroy development infrastructure and service account (auto-setup if needed)
-	@echo "💥 Destroying development infrastructure and service account with smart auto-setup..."
-	@cd lockdev-hippa-iac && ./scripts/cleanup.sh -e dev -m complete
+	@echo "💥 Destroying development infrastructure and service account with enhanced protection handling..."
+	@echo "🔍 This will handle load balancer deletion protection, ENI dependencies, and comprehensive cleanup"
+	@cd lockdev-hippa-iac && {
+		echo "🔄 Setting up enhanced cleanup scripts..."; \
+		chmod +x enhanced-cleanup.sh scripts/cleanup.sh force-cleanup.sh; \
+		echo "🧹 Running enhanced comprehensive cleanup..."; \
+		./enhanced-cleanup.sh dev; \
+	}
 
 clean-staging: ## Destroy staging infrastructure (auto-setup if needed)
-	@echo "💥 Destroying staging infrastructure with smart auto-setup..."
-	@cd lockdev-hippa-iac && ./scripts/cleanup.sh -e staging -m infrastructure
+	@echo "💥 Destroying staging infrastructure with enhanced protection handling..."
+	@echo "🔍 This will handle load balancer deletion protection, ENI dependencies, and comprehensive cleanup"
+	@cd lockdev-hippa-iac && {
+		echo "🔄 Setting up enhanced cleanup scripts..."; \
+		chmod +x enhanced-cleanup.sh scripts/cleanup.sh force-cleanup.sh; \
+		echo "🧹 Running enhanced comprehensive cleanup..."; \
+		./enhanced-cleanup.sh staging; \
+	}
 
 clean-prod: ## Destroy production infrastructure (auto-setup if needed)
 	@echo "🚨 PRODUCTION INFRASTRUCTURE DESTRUCTION"
 	@echo "This will destroy ALL PRODUCTION infrastructure!"
+	@echo "🔍 Enhanced protection handling will disable load balancer deletion protection and ENI dependencies"
 	@read -p "Enter 'DESTROY PRODUCTION INFRASTRUCTURE' to proceed: " confirm; \
 	if [ "$$confirm" = "DESTROY PRODUCTION INFRASTRUCTURE" ]; then \
-		cd lockdev-hippa-iac && ./scripts/cleanup.sh -e prod -m infrastructure; \
+		cd lockdev-hippa-iac && { \
+			echo "🔄 Updating scripts for enhanced cleanup..."; \
+			chmod +x scripts/cleanup.sh force-cleanup.sh; \
+			echo "🛡️  Disabling load balancer deletion protection and ENI cleanup..."; \
+			AWS_PROFILE=dev-root aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerArn,LoadBalancerName]' --output text | grep prod | while read arn name; do \
+				echo "🛡️  Disabling deletion protection for: $$name"; \
+				aws elbv2 modify-load-balancer-attributes --load-balancer-arn $$arn --attributes Key=deletion_protection.enabled,Value=false 2>/dev/null || echo "⚠️  Could not disable protection for $$name"; \
+			done; \
+			echo "🧹 Running comprehensive cleanup..."; \
+			./scripts/cleanup.sh -e prod -m infrastructure; \
+		}; \
 	else \
 		echo "Production infrastructure cleanup cancelled."; \
 	fi
 
 # Complete cleanup (infrastructure + service user)
 clean-dev-complete: ## Completely remove development (infrastructure + service user)
-	@echo "💥 Complete development cleanup..."
-	@cd lockdev-hippa-iac && ./scripts/cleanup.sh -e dev -m complete
+	@echo "💥 Complete development cleanup with enhanced protection handling..."
+	@echo "🔍 This will handle load balancer deletion protection, ENI dependencies, and comprehensive cleanup"
+	@cd lockdev-hippa-iac && \
+		echo "🔄 Setting up enhanced cleanup scripts..." && \
+		chmod +x enhanced-cleanup.sh smart-cleanup.sh force-cleanup.sh && \
+		echo "🧹 Running enhanced comprehensive cleanup..." && \
+		./enhanced-cleanup.sh dev --force
 
 clean-staging-complete: ## Completely remove staging (infrastructure + service user)
-	@echo "💥 Complete staging cleanup..."
-	@cd lockdev-hippa-iac && ./scripts/cleanup.sh -e staging -m complete
+	@echo "💥 Complete staging cleanup with enhanced protection handling..."
+	@echo "🔍 This will handle load balancer deletion protection, ENI dependencies, and comprehensive cleanup"
+	@cd lockdev-hippa-iac && {
+		echo "🔄 Setting up enhanced cleanup scripts..."; \
+		chmod +x enhanced-cleanup.sh scripts/cleanup.sh force-cleanup.sh; \
+		echo "🧹 Running enhanced comprehensive cleanup..."; \
+		./enhanced-cleanup.sh staging --force; \
+	}
 
 clean-prod-complete: ## Completely remove production (infrastructure + service user)
 	@echo "🚨 PRODUCTION CLEANUP - FINAL WARNING"
 	@echo "This will destroy ALL PRODUCTION resources!"
+	@echo "🔍 Enhanced protection handling will disable load balancer deletion protection, ENI dependencies, and comprehensive cleanup"
 	@read -p "Enter 'DESTROY ALL PRODUCTION RESOURCES' to proceed: " confirm; \
 	if [ "$$confirm" = "DESTROY ALL PRODUCTION RESOURCES" ]; then \
-		cd lockdev-hippa-iac && ./scripts/cleanup.sh -e prod -m complete; \
+		cd lockdev-hippa-iac && { \
+			echo "🔄 Setting up enhanced cleanup scripts..."; \
+			chmod +x enhanced-cleanup.sh scripts/cleanup.sh force-cleanup.sh; \
+			echo "🧹 Running enhanced comprehensive cleanup..."; \
+			./enhanced-cleanup.sh prod --force; \
+		}; \
 	else \
 		echo "Production cleanup cancelled."; \
 	fi

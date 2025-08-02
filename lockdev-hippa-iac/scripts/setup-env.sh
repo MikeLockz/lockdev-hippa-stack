@@ -290,6 +290,94 @@ create_access_keys() {
     echo ""
 }
 
+# Create infrastructure IAM roles that will be used by Pulumi
+create_infrastructure_roles() {
+    local root_profile="$1"
+    local environment="$2"
+    
+    log_step "Creating infrastructure IAM roles..."
+    
+    # ECS Task Execution Role
+    create_iam_role "$root_profile" "hipaa-ecs-task-execution-role" \
+        "ecs-tasks.amazonaws.com" \
+        "HIPAA-ECS-Task-Execution-Role" \
+        "$environment"
+    
+    # ECS Task Role  
+    create_iam_role "$root_profile" "hipaa-ecs-task-role" \
+        "ecs-tasks.amazonaws.com" \
+        "HIPAA-ECS-Task-Role" \
+        "$environment"
+    
+    # CloudWatch Role
+    create_iam_role "$root_profile" "hipaa-cloudwatch-role" \
+        "events.amazonaws.com" \
+        "HIPAA-CloudWatch-Role" \
+        "$environment"
+    
+    # CloudTrail Role
+    create_iam_role "$root_profile" "hipaa-cloudtrail-role" \
+        "cloudtrail.amazonaws.com" \
+        "HIPAA-CloudTrail-Role" \
+        "$environment"
+    
+    # Config Role
+    create_iam_role "$root_profile" "hipaa-config-role" \
+        "config.amazonaws.com" \
+        "HIPAA-Config-Role" \
+        "$environment"
+    
+    log_success "Infrastructure IAM roles created"
+}
+
+# Generic function to create IAM role
+create_iam_role() {
+    local root_profile="$1"
+    local role_name="$2"
+    local service="$3"
+    local display_name="$4"
+    local environment="$5"
+    
+    log_step "Creating IAM role: $role_name"
+    
+    # Check if role already exists
+    if AWS_PROFILE="$root_profile" aws iam get-role --role-name "$role_name" &> /dev/null; then
+        log_info "Role already exists: $role_name"
+        return 0
+    fi
+    
+    if is_dry_run; then
+        log_info "[DRY RUN] Would create role: $role_name"
+        return 0
+    fi
+    
+    # Create trust policy
+    local trust_policy="{
+        \"Version\": \"2012-10-17\",
+        \"Statement\": [
+            {
+                \"Action\": \"sts:AssumeRole\",
+                \"Effect\": \"Allow\",
+                \"Principal\": {
+                    \"Service\": \"$service\"
+                }
+            }
+        ]
+    }"
+    
+    # Create the role
+    local role_output=$(AWS_PROFILE="$root_profile" aws iam create-role \
+        --role-name "$role_name" \
+        --assume-role-policy-document "$trust_policy" \
+        --tags Key=Name,Value="$display_name" \
+               Key=Environment,Value="$environment" \
+               Key=Compliance,Value=HIPAA \
+               Key=ManagedBy,Value=setup-env-script)
+    
+    local role_arn=$(echo "$role_output" | jq -r '.Role.Arn')
+    log_success "Role created: $role_name ($role_arn)"
+}
+
 # Ensure credentials file is in .gitignore
 ensure_gitignore() {
     local environment="$1"
@@ -381,6 +469,9 @@ setup_environment() {
     
     # Create access keys
     create_access_keys "$root_profile" "$user_name" "$env_name"
+    
+    # Create infrastructure IAM roles
+    create_infrastructure_roles "$root_profile" "$env_name"
     
     log_success "Environment setup complete: $env_name"
 }

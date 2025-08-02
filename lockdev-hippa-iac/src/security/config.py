@@ -2,6 +2,11 @@
 import pulumi
 import pulumi_aws as aws
 import json
+from utils.iam_import import (
+    get_or_import_iam_role,
+    attach_policy_to_role,
+    create_iam_policy
+)
 
 
 def create_config():
@@ -42,97 +47,80 @@ def create_config():
         restrict_public_buckets=True
     )
     
-    # Create IAM role for Config
-    config_role = aws.iam.Role(
+    # Create IAM role for Config - import if exists, create if not
+    config_role = get_or_import_iam_role(
         "config-role",
-        name="hipaa-config-role",
-        assume_role_policy=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Action": "sts:AssumeRole",
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "config.amazonaws.com"
-                    }
-                }
-            ]
-        }),
-        tags={
-            "Name": "HIPAA-Config-Role",
-            "Environment": config.get("environment", "dev"),
-            "Compliance": "HIPAA"
-        }
+        "hipaa-config-role",
+        "config.amazonaws.com",
+        "HIPAA-Config-Role",
+        config.get("environment", "dev")
     )
     
     # Attach AWS managed policy for Config
-    aws.iam.RolePolicyAttachment(
+    attach_policy_to_role(
         "config-role-policy",
-        role=config_role.name,
-        policy_arn="arn:aws:iam::aws:policy/service-role/AWS_ConfigRole"
+        config_role,
+        "arn:aws:iam::aws:policy/service-role/AWS_ConfigRole",
+        "AWS_ConfigRole"
     )
     
     # Create custom policy for Config S3 access
+    config_s3_policy_doc = pulumi.Output.all(config_bucket.id, current.account_id).apply(
+        lambda args: {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:GetBucketAcl",
+                        "s3:GetBucketLocation"
+                    ],
+                    "Resource": f"arn:aws:s3:::{args[0]}"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": "s3:PutObject",
+                    "Resource": f"arn:aws:s3:::{args[0]}/*",
+                    "Condition": {
+                        "StringEquals": {
+                            "s3:x-amz-acl": "bucket-owner-full-control"
+                        }
+                    }
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": "s3:GetObject",
+                    "Resource": f"arn:aws:s3:::{args[0]}/*"
+                }
+            ]
+        }
+    )
+    
     config_s3_policy = aws.iam.Policy(
         "config-s3-policy",
         name="hipaa-config-s3-policy",
         description="Policy for Config S3 access",
-        policy=pulumi.Output.all(config_bucket.id, current.account_id).apply(
-            lambda args: json.dumps({
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": [
-                            "s3:GetBucketAcl",
-                            "s3:GetBucketLocation"
-                        ],
-                        "Resource": f"arn:aws:s3:::{args[0]}"
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": "s3:PutObject",
-                        "Resource": f"arn:aws:s3:::{args[0]}/*",
-                        "Condition": {
-                            "StringEquals": {
-                                "s3:x-amz-acl": "bucket-owner-full-control"
-                            }
-                        }
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": "s3:GetObject",
-                        "Resource": f"arn:aws:s3:::{args[0]}/*"
-                    }
-                ]
-            })
-        ),
+        policy=config_s3_policy_doc.apply(lambda doc: json.dumps(doc)),
         tags={
             "Name": "HIPAA-Config-S3-Policy",
             "Environment": config.get("environment", "dev"),
             "Compliance": "HIPAA"
-        }
-    )
-    
-    # Attach S3 policy to Config role
-    aws.iam.RolePolicyAttachment(
-        "config-s3-role-policy-attachment",
-        role=config_role.name,
-        policy_arn=config_s3_policy.arn
-    )
-    
-    # Create Config delivery channel
-    config_delivery_channel = aws.cfg.DeliveryChannel(
-        "config-delivery-channel",
-        name="hipaa-config-delivery-channel",
-        s3_bucket_name=config_bucket.id,
-        s3_key_prefix="config",
-        snapshot_delivery_properties=aws.cfg.DeliveryChannelSnapshotDeliveryPropertiesArgs(
-            delivery_frequency="TwentyFour_Hours"
+        },
+        opts=pulumi.ResourceOptions(
+            protect=True,
+            ignore_changes=["name"]
         )
     )
     
-    # Create Config configuration recorder
+    # Attach S3 policy to Config role
+    attach_policy_to_role(
+        "config-s3-role-policy-attachment",
+        config_role,
+        config_s3_policy.arn,
+        "hipaa-config-s3-policy"
+    )
+    
+    # Create Config configuration recorder FIRST
     config_recorder = aws.cfg.Recorder(
         "config-recorder",
         name="hipaa-config-recorder",
@@ -141,6 +129,18 @@ def create_config():
             all_supported=True,
             include_global_resource_types=True
         )
+    )
+    
+    # Create Config delivery channel AFTER recorder
+    config_delivery_channel = aws.cfg.DeliveryChannel(
+        "config-delivery-channel",
+        name="hipaa-config-delivery-channel",
+        s3_bucket_name=config_bucket.id,
+        s3_key_prefix="config",
+        snapshot_delivery_properties=aws.cfg.DeliveryChannelSnapshotDeliveryPropertiesArgs(
+            delivery_frequency="TwentyFour_Hours"
+        ),
+        opts=pulumi.ResourceOptions(depends_on=[config_recorder])
     )
     
     # Create Config rules for HIPAA compliance

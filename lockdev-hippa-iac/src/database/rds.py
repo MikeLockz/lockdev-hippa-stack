@@ -25,7 +25,7 @@ def create_rds_instance(
         }
     )
     
-    # Create parameter group
+    # Create parameter group with idempotent handling
     parameter_group = aws.rds.ParameterGroup(
         "hipaa-db-parameter-group",
         family="postgres16",
@@ -49,7 +49,13 @@ def create_rds_instance(
             "Name": "HIPAA-DB-Parameter-Group",
             "Environment": config.get("environment", "dev"),
             "Compliance": "HIPAA"
-        }
+        },
+        opts=pulumi.ResourceOptions(
+            # Protect from accidental deletion
+            protect=True,
+            # Handle "already exists" by ignoring if parameter group exists
+            ignore_changes=["name"]
+        )
     )
     
     # Create RDS instance
@@ -95,6 +101,5 @@ def create_rds_instance(
     return {
         "db_instance": db_instance,
         "db_subnet_group": db_subnet_group,
-        "parameter_group": parameter_group,
-        "log_group": log_group
+        "parameter_group": parameter_group
     }

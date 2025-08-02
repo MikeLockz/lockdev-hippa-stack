@@ -1,0 +1,25 @@
+{
+  "alb_dns_name": "hipaa-alb-1817801549.us-east-1.elb.amazonaws.com",
+  "alb_zone_id": "Z35SXDOTRQ7X7K",
+  "cloudtrail_arn": "arn:aws:cloudtrail:us-east-1:067518243012:trail/hipaa-audit-trail",
+  "config_recorder_name": "hipaa-config-recorder",
+  "database_endpoint": "hipaa-postgres-db.ckh2q0oakoos.us-east-1.rds.amazonaws.com:5432",
+  "ecr_repository_url": "067518243012.dkr.ecr.us-east-1.amazonaws.com/hipaa-app",
+  "ecs_cluster_name": "hipaa-ecs-cluster",
+  "ecs_service_name": "hipaa-app-service-7a6fb93",
+  "ecs_task_execution_role_arn": "arn:aws:iam::067518243012:role/hipaa-ecs-task-execution-role",
+  "ecs_task_role_arn": "arn:aws:iam::067518243012:role/hipaa-ecs-task-role",
+  "guardduty_detector_id": "814d83a95c944ae4830c1d3c87bb4110",
+  "kms_key_arn": "arn:aws:kms:us-east-1:067518243012:key/1c960187-06fa-49f2-90a0-e8f80d0b6ad4",
+  "kms_key_id": "1c960187-06fa-49f2-90a0-e8f80d0b6ad4",
+  "private_subnet_ids": [
+    "subnet-0a48393f1d3f6686d",
+    "subnet-023701bd406ae6547"
+  ],
+  "public_subnet_ids": [
+    "subnet-065110f3b4ad20cba",
+    "subnet-04b3ae717127a1c24"
+  ],
+  "task_definition_arn": "arn:aws:ecs:us-east-1:067518243012:task-definition/hipaa-app:2",
+  "vpc_id": "vpc-0afe16ebb80875e3a"
+}
