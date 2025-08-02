@@ -1178,6 +1178,30 @@ deploy: ## Deploy infrastructure (legacy)
 	@cd lockdev-hippa-iac && poetry run pulumi up
 
 # =========================================
+# AWS RESOURCE DISCOVERY
+# =========================================
+
+list-aws-resources: ## List all AWS resources in the account
+	@echo "🔍 Listing AWS resources..."
+	@chmod +x list-aws-resources.sh
+	@AWS_PROFILE=dev-root ./list-aws-resources.sh
+
+list-aws-resources-dev: ## List AWS resources in development environment
+	@echo "🔍 Listing development AWS resources..."
+	@chmod +x list-aws-resources.sh
+	@AWS_PROFILE=pulumi-deploy-user-dev ./list-aws-resources.sh
+
+list-aws-resources-staging: ## List AWS resources in staging environment
+	@echo "🔍 Listing staging AWS resources..."
+	@chmod +x list-aws-resources.sh
+	@AWS_PROFILE=pulumi-deploy-user-staging ./list-aws-resources.sh
+
+list-aws-resources-prod: ## List AWS resources in production environment
+	@echo "🔍 Listing production AWS resources..."
+	@chmod +x list-aws-resources.sh
+	@AWS_PROFILE=pulumi-deploy-user-prod ./list-aws-resources.sh
+
+# =========================================
 # INFRASTRUCTURE VISUALIZATION TARGETS
 # =========================================
 
