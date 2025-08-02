@@ -1,0 +1,100 @@
+<?xml version="1.0" ?>
+<mxfile host="app.diagrams.net" modified="2024-01-01" agent="5.0" etag="disaster_recovery_process_flow" version="21.1.2" type="device">
+  <diagram name="Disaster Recovery Process Flow" id="dr_flow">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="objectives" value="Recovery Objectives" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="700" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="rto" value="RTO: 15 minutes
+(Recovery Time)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="objectives">
+          <mxGeometry x="50" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="rpo" value="RPO: 5 minutes
+(Recovery Point)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="objectives">
+          <mxGeometry x="220" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="sla" value="SLA: 99.9%
+Availability" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="objectives">
+          <mxGeometry x="390" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="monitoring" value="Monitoring &amp; Detection" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="170" width="700" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="health_checks" value="Health Checks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="monitoring">
+          <mxGeometry x="50" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="metric_alarms" value="Metric Alarms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="monitoring">
+          <mxGeometry x="220" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="incident_detection" value="Incident Detection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="monitoring">
+          <mxGeometry x="390" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="decision" value="Decision Process" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="290" width="700" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="assessment" value="Assess Incident" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="decision">
+          <mxGeometry x="50" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="dr_decision" value="DR Decision" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="decision">
+          <mxGeometry x="220" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="notification" value="Stakeholder Alert" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="decision">
+          <mxGeometry x="390" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="activation" value="DR Activation" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="410" width="700" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="initiate" value="Initiate DR" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="activation">
+          <mxGeometry x="50" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="failover" value="DNS Failover" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="activation">
+          <mxGeometry x="220" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="scale_up" value="Scale Up DR" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="activation">
+          <mxGeometry x="390" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="recovery" value="Recovery Process" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="530" width="700" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="restore_db" value="Database Restore" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="recovery">
+          <mxGeometry x="50" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="sync_storage" value="Storage Sync" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="recovery">
+          <mxGeometry x="200" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="validate" value="Service Validation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="recovery">
+          <mxGeometry x="370" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="post" value="Post-Recovery" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="650" width="700" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="health_val" value="Health Validation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="post">
+          <mxGeometry x="50" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="perf_check" value="Performance Check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="post">
+          <mxGeometry x="220" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="review" value="Post-Incident Review" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="post">
+          <mxGeometry x="390" y="30" width="150" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="monitoring" source="health_checks" target="metric_alarms"/>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="monitoring" source="metric_alarms" target="incident_detection"/>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="decision" source="incident_detection" target="assessment"/>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="decision" source="assessment" target="dr_decision"/>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="decision" source="dr_decision" target="notification"/>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="activation" source="dr_decision" target="initiate"/>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="activation" source="initiate" target="failover"/>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="activation" source="initiate" target="scale_up"/>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="recovery" source="initiate" target="restore_db"/>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="recovery" source="restore_db" target="sync_storage"/>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="recovery" source="sync_storage" target="validate"/>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="post" source="validate" target="health_val"/>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="post" source="health_val" target="perf_check"/>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="post" source="perf_check" target="review"/>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

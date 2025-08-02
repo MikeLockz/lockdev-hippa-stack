@@ -384,7 +384,7 @@ class DisasterRecoveryDiagramGenerator:
             "dr_flow_process.png",
             "dr_flow_process.drawio",
             "backup_strategy.png",
-            "backup_strategy.png"
+            "backup_strategy.drawio"
         ]
         
         existing_diagrams = []
@@ -454,6 +454,8 @@ def main():
     generator.create_disaster_recovery_diagram()
     generator.create_dr_flow_diagram()
     generator.create_backup_strategy_diagram()
+    generator.create_dr_flow_drawio()
+    generator.create_backup_strategy_drawio()
     
     # Generate report
     dr_report = generator.generate_dr_report()

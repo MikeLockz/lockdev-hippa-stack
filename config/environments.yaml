@@ -1,0 +1,122 @@
+# HIPAA Infrastructure Cleanup Configuration
+# Environment-specific settings for the unified cleanup script
+
+environments:
+  dev:
+    aws_profile: dev-root
+    region: us-east-1
+    force_mode: true
+    skip_verification: false
+    create_snapshots: true
+    skip_snapshots: false
+    dry_run_safe: true
+    
+    # Resource patterns for identification
+    resource_patterns:
+      s3:
+        - "hipaa-*"
+        - "*cloudtrail*"
+        - "*dev*"
+      rds:
+        - "hipaa-*"
+      load_balancers:
+        - "hipaa-*"
+        - "*dev*"
+      security_groups:
+        - "hipaa-*"
+      vpc:
+        - "*hipaa*"
+        - "*dev*"
+      
+    # Cleanup behavior
+    behavior:
+      confirm_deletion: false
+      create_backup: true
+      verbose_logging: true
+      
+  staging:
+    aws_profile: staging-root
+    region: us-east-1
+    force_mode: false
+    skip_verification: false
+    create_snapshots: true
+    skip_snapshots: false
+    dry_run_safe: true
+    
+    resource_patterns:
+      s3:
+        - "hipaa-*"
+        - "*cloudtrail*"
+        - "*staging*"
+      rds:
+        - "hipaa-*"
+      load_balancers:
+        - "hipaa-*"
+        - "*staging*"
+      security_groups:
+        - "hipaa-*"
+      vpc:
+        - "*hipaa*"
+        - "*staging*"
+    
+    behavior:
+      confirm_deletion: true
+      create_backup: true
+      verbose_logging: true
+      
+  prod:
+    aws_profile: prod-root
+    region: us-east-1
+    force_mode: false
+    skip_verification: false
+    create_snapshots: true
+    skip_snapshots: false
+    dry_run_safe: false
+    
+    resource_patterns:
+      s3:
+        - "hipaa-*"
+        - "*cloudtrail*"
+        - "*prod*"
+      rds:
+        - "hipaa-*"
+      load_balancers:
+        - "hipaa-*"
+        - "*prod*"
+      security_groups:
+        - "hipaa-*"
+      vpc:
+        - "*hipaa*"
+        - "*prod*"
+    
+    behavior:
+      confirm_deletion: true
+      create_backup: true
+      verbose_logging: true
+      
+# Global settings
+global:
+  # AWS regions to check
+  regions:
+    - us-east-1
+    - us-west-2
+  
+  # Cleanup phases
+  phases:
+    - prepare
+    - data
+    - resources
+    - vpc
+    - verify
+  
+  # Default wait times (seconds)
+  wait_times:
+    rds_deletion: 300
+    vpc_deletion: 600
+    snapshot_creation: 600
+  
+  # Retry configuration
+  retry:
+    max_attempts: 3
+    backoff_multiplier: 2
+    initial_delay: 10

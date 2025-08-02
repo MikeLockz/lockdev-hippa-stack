@@ -19,6 +19,7 @@ from diagrams.onprem.ci import GithubActions
 from diagrams.generic.blank import Blank
 import argparse
 import logging
+from drawio_utils import DrawIOGenerator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -252,18 +253,118 @@ class CICDDiagramGenerator:
             app_trigger >> app_test >> app_security >> app_build >> app_deploy_dev >> app_test_dev >> app_deploy_staging >> app_test_staging >> app_deploy_prod
             sec_schedule >> sec_sca >> sec_sast >> sec_container >> sec_report
     
+    def create_cicd_drawio_diagram(self, workflows):
+        """Create CI/CD pipeline DrawIO diagram with AWS best practices styling"""
+        drawio_gen = DrawIOGenerator(self.output_dir)
+        
+        mxfile = drawio_gen.create_mxfile("HIPAA CI/CD Pipeline Architecture", "cicd_arch")
+        diagram = drawio_gen.create_diagram(mxfile, "HIPAA CI/CD Pipeline Architecture", "cicd_arch")
+        mxgraphmodel = drawio_gen.create_graph_model(diagram)
+        root = drawio_gen.create_root(mxgraphmodel)
+        
+        # Source Code Management
+        scm_container = drawio_gen.add_swimlane(root, "scm", "📁 Source Code Management", 50, 50, 700, 120)
+        drawio_gen.add_rectangle(root, "github", "🐙 GitHub Repository\nMain Branch Protection\n🔄 PR Reviews Required", 
+                                50, 30, 180, 60, fill_color="#181717", stroke_color="#181717", parent="scm")
+        drawio_gen.add_rectangle(root, "codecommit", "🗄️ CodeCommit\nDisaster Recovery Backup\n🔐 Encrypted at Rest", 
+                                270, 30, 180, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="scm")
+        
+        # CI/CD Engine
+        cicd_container = drawio_gen.add_swimlane(root, "cicd", "⚙️ CI/CD Pipeline Engine", 50, 190, 700, 200)
+        drawio_gen.add_rectangle(root, "gha", "🚀 GitHub Actions\nCI/CD Orchestration\n📝 Workflow Automation", 
+                                50, 30, 200, 70, fill_color="#2088FF", stroke_color="#2088FF", parent="cicd")
+        drawio_gen.add_rectangle(root, "codebuild", "🔨 AWS CodeBuild\nBuild & Test Stages\n📊 Parallel Execution", 
+                                280, 30, 180, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="cicd")
+        drawio_gen.add_rectangle(root, "codepipeline", "🔄 AWS CodePipeline\nMulti-Stage Deployments\n🎯 Approval Gates", 
+                                490, 30, 160, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="cicd")
+        
+        # Build Stages
+        build_container = drawio_gen.add_swimlane(root, "build", "🔍 Build & Quality Gates", 50, 420, 700, 150)
+        drawio_gen.add_rectangle(root, "lint", "🧹 Code Quality\nBlack, Flake8, MyPy\n📊 Code Standards", 
+                                50, 30, 140, 60, fill_color="#2E73B8", stroke_color="#2E73B8", parent="build")
+        drawio_gen.add_rectangle(root, "security", "🔐 Security Scan\nTrivy, Bandit, Checkov\n🚨 Vulnerability Detection", 
+                                210, 30, 160, 60, fill_color="#D93232", stroke_color="#D93232", parent="build")
+        drawio_gen.add_rectangle(root, "tests", "🧪 Comprehensive Tests\nUnit, Integration, E2E\n📈 Coverage Reports", 
+                                390, 30, 140, 60, fill_color="#2E73B8", stroke_color="#2E73B8", parent="build")
+        drawio_gen.add_rectangle(root, "docker", "🐳 Container Build\nMulti-stage Docker\n🔄 Image Optimization", 
+                                560, 30, 120, 60, fill_color="#2496ED", stroke_color="#2496ED", parent="build")
+        
+        # Deployment Environments
+        deploy_container = drawio_gen.add_swimlane(root, "deploy", "🚀 Multi-Environment Deployment", 50, 600, 750, 200)
+        
+        # Development
+        dev_container = drawio_gen.add_swimlane(root, "dev", "🧪 Development Environment", 50, 50, 220, 120)
+        drawio_gen.add_rectangle(root, "dev_deploy", "📦 Dev Deploy\nAutomated Deployment\n🔧 Debug Enabled", 
+                                50, 30, 140, 60, fill_color="#28A745", stroke_color="#28A745", parent="dev")
+        drawio_gen.add_rectangle(root, "dev_ecs", "🐳 Dev ECS\nFargate Tasks\n💾 Development Data", 
+                                210, 30, 140, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="dev")
+        
+        # Staging
+        staging_container = drawio_gen.add_swimlane(root, "staging", "🎯 Staging Environment", 300, 50, 220, 120)
+        drawio_gen.add_rectangle(root, "staging_deploy", "🎯 Staging Deploy\nApproval Required\n🧪 Integration Tests", 
+                                50, 30, 160, 60, fill_color="#FFC107", stroke_color="#FFC107", parent="staging")
+        drawio_gen.add_rectangle(root, "staging_ecs", "🐳 Staging ECS\nProduction-like\n📊 Load Testing", 
+                                230, 30, 140, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="staging")
+        
+        # Production
+        prod_container = drawio_gen.add_swimlane(root, "prod", "🏭 Production Environment", 550, 50, 180, 120)
+        drawio_gen.add_rectangle(root, "prod_approval", "✅ Manual Approval\nChange Management\n👥 Team Review", 
+                                50, 30, 140, 60, fill_color="#FFC107", stroke_color="#FFC107", parent="prod")
+        drawio_gen.add_rectangle(root, "prod_deploy", "🏭 Production Deploy\nBlue-Green Deployment\n🔄 Zero Downtime", 
+                                50, 100, 140, 60, fill_color="#28A745", stroke_color="#28A745", parent="prod")
+        
+        # Security & Compliance
+        security_container = drawio_gen.add_swimlane(root, "security", "🔐 Security & Secrets Management", 50, 830, 750, 120)
+        drawio_gen.add_rectangle(root, "secrets", "🔑 Secrets Manager\nAPI Keys & DB Credentials\n🔐 Encrypted Storage", 
+                                50, 30, 180, 60, fill_color="#D93232", stroke_color="#D93232", parent="security")
+        drawio_gen.add_rectangle(root, "iam", "🔑 IAM Roles\nLeast Privilege Access\n📝 Service Permissions", 
+                                250, 30, 180, 60, fill_color="#D93232", stroke_color="#D93232", parent="security")
+        drawio_gen.add_rectangle(root, "compliance", "📋 Compliance Check\nHIPAA Validation\n🚨 Policy Enforcement", 
+                                450, 30, 180, 60, fill_color="#D93232", stroke_color="#D93232", parent="security")
+        
+        # Monitoring & Rollback
+        monitoring_container = drawio_gen.add_swimlane(root, "monitoring", "📊 Monitoring & Rollback", 50, 980, 750, 120)
+        drawio_gen.add_rectangle(root, "cloudwatch", "📊 CloudWatch\nMetrics & Alarms\n🚨 Health Monitoring", 
+                                50, 30, 180, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="monitoring")
+        drawio_gen.add_rectangle(root, "rollback", "🔄 Auto Rollback\nCloudWatch Triggers\n⚡ Instant Recovery", 
+                                250, 30, 180, 60, fill_color="#D93232", stroke_color="#D93232", parent="monitoring")
+        drawio_gen.add_rectangle(root, "artifacts", "📦 Artifact Storage\nBuild Artifacts\n🗄️ S3 Lifecycle", 
+                                450, 30, 180, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="monitoring")
+        
+        # Connections
+        drawio_gen.add_edge(root, "edge1", "github", "gha")
+        drawio_gen.add_edge(root, "edge2", "gha", "codebuild")
+        drawio_gen.add_edge(root, "edge3", "codebuild", "lint")
+        drawio_gen.add_edge(root, "edge4", "lint", "security")
+        drawio_gen.add_edge(root, "edge5", "security", "tests")
+        drawio_gen.add_edge(root, "edge6", "tests", "docker")
+        drawio_gen.add_edge(root, "edge7", "docker", "codepipeline")
+        drawio_gen.add_edge(root, "edge8", "codepipeline", "dev_deploy")
+        drawio_gen.add_edge(root, "edge9", "dev_deploy", "staging_deploy")
+        drawio_gen.add_edge(root, "edge10", "staging_deploy", "prod_approval")
+        drawio_gen.add_edge(root, "edge11", "prod_approval", "prod_deploy")
+        drawio_gen.add_edge(root, "edge12", "secrets", "dev_deploy")
+        drawio_gen.add_edge(root, "edge13", "secrets", "staging_deploy")
+        drawio_gen.add_edge(root, "edge14", "secrets", "prod_deploy")
+        drawio_gen.add_edge(root, "edge15", "cloudwatch", "rollback")
+        
+        return drawio_gen.save_drawio_file(mxfile, "cicd_pipeline.drawio")
+
     def validate_diagram(self):
         """Validate generated CI/CD diagrams"""
         cicd_path = f"{self.output_dir}/cicd_pipeline_architecture.png"
         detailed_path = f"{self.output_dir}/github_workflows_detailed.png"
+        cicd_drawio_path = f"{self.output_dir}/cicd_pipeline.drawio"
         
         cicd_exists = os.path.exists(cicd_path)
         detailed_exists = os.path.exists(detailed_path)
+        cicd_drawio_exists = os.path.exists(cicd_drawio_path)
         
-        if cicd_exists and detailed_exists:
+        if cicd_exists and detailed_exists and cicd_drawio_exists:
             logger.info("✅ CI/CD diagrams generated successfully")
             logger.info(f"📊 Main diagram: {cicd_path}")
             logger.info(f"📊 Detailed workflows: {detailed_path}")
+            logger.info(f"📊 Draw.io: {cicd_drawio_path}")
             return True
         else:
             logger.error("❌ CI/CD diagram generation failed")
@@ -271,6 +372,8 @@ class CICDDiagramGenerator:
                 logger.error(f"Missing: {cicd_path}")
             if not detailed_exists:
                 logger.error(f"Missing: {detailed_path}")
+            if not cicd_drawio_exists:
+                logger.error(f"Missing: {cicd_drawio_path}")
             return False
 
 def main():
@@ -294,6 +397,7 @@ def main():
     # Create diagrams
     generator.create_cicd_diagram(workflows)
     generator.create_detailed_workflow_diagram(workflows)
+    generator.create_cicd_drawio_diagram(workflows)
     
     if generator.validate_diagram():
         print("✅ Phase 5 Complete: CI/CD pipeline diagrams generated")

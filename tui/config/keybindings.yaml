@@ -1,0 +1,289 @@
+# HIPAA Infrastructure Stack TUI Keybindings
+
+# Global Navigation
+global:
+  # Application control
+  quit:
+    - "q"
+    - "ctrl+c"
+  
+  # Panel navigation
+  focus_next:
+    - "tab"
+  
+  focus_previous:
+    - "shift+tab"
+  
+  # Refresh actions
+  refresh_status:
+    - "f5"
+    - "ctrl+r"
+  
+  refresh_commands:
+    - "ctrl+shift+r"
+
+# Command Tree Navigation
+command_tree:
+  # Tree navigation
+  move_up:
+    - "up"
+    - "k"
+  
+  move_down:
+    - "down"
+    - "j"
+  
+  expand_node:
+    - "right"
+    - "l"
+    - "space"
+  
+  collapse_node:
+    - "left"
+    - "h"
+    - "backspace"
+  
+  # Command actions
+  execute_command:
+    - "enter"
+    - "return"
+  
+  select_command:
+    - "space"
+  
+  # Search and filter
+  search:
+    - "/"
+    - "ctrl+f"
+  
+  clear_search:
+    - "escape"
+    - "ctrl+x"
+  
+  # Bookmarks
+  toggle_bookmark:
+    - "b"
+    - "ctrl+b"
+  
+  show_favorites:
+    - "f"
+    - "ctrl+shift+f"
+
+# Output Pane Controls
+output_pane:
+  # Scrolling
+  scroll_up:
+    - "page_up"
+    - "ctrl+u"
+  
+  scroll_down:
+    - "page_down"
+    - "ctrl+d"
+  
+  scroll_to_top:
+    - "home"
+    - "ctrl+home"
+    - "g+g"  # Vim-style
+  
+  scroll_to_bottom:
+    - "end"
+    - "ctrl+end"
+    - "shift+g"  # Vim-style
+  
+  # Output management
+  clear_output:
+    - "ctrl+l"
+  
+  search_output:
+    - "ctrl+shift+f"
+  
+  # View modes
+  toggle_fullscreen:
+    - "ctrl+f"
+    - "f11"
+  
+  toggle_word_wrap:
+    - "ctrl+w"
+
+# Status Bar Controls
+status_bar:
+  # Status actions
+  refresh_status:
+    - "ctrl+r"
+  
+  show_details:
+    - "ctrl+i"
+  
+  toggle_auto_refresh:
+    - "ctrl+shift+a"
+
+# Command Execution (Phase 2)
+execution:
+  # Command control
+  interrupt_command:
+    - "ctrl+c"
+    - "ctrl+break"
+  
+  kill_command:
+    - "ctrl+k"
+  
+  # Command editing
+  edit_before_run:
+    - "ctrl+e"
+  
+  run_with_params:
+    - "ctrl+p"
+  
+  repeat_last:
+    - "ctrl+shift+r"
+
+# Theme and UI
+interface:
+  # Theme switching
+  toggle_theme:
+    - "ctrl+t"
+  
+  next_theme:
+    - "ctrl+shift+t"
+  
+  # UI adjustments
+  increase_tree_width:
+    - "ctrl+right"
+  
+  decrease_tree_width:
+    - "ctrl+left"
+  
+  reset_layout:
+    - "ctrl+0"
+
+# Help and Information
+help:
+  # Help system
+  show_help:
+    - "h"
+    - "f1"
+    - "ctrl+h"
+  
+  show_keybindings:
+    - "?"
+    - "ctrl+?"
+  
+  show_command_help:
+    - "ctrl+shift+h"
+  
+  about:
+    - "ctrl+shift+a"
+
+# Development and Debug (hidden from users)
+debug:
+  # Debug features
+  toggle_debug:
+    - "ctrl+shift+d"
+  
+  show_widget_tree:
+    - "ctrl+shift+w"
+  
+  reload_css:
+    - "ctrl+shift+c"
+
+# Vim-style Commands (for advanced users)
+vim:
+  # Enable vim-style navigation
+  enabled: false
+  
+  # Vim keybindings (when enabled)
+  normal_mode:
+    # Navigation
+    move_left: "h"
+    move_down: "j"
+    move_up: "k"
+    move_right: "l"
+    
+    # Scrolling
+    scroll_half_up: "ctrl+u"
+    scroll_half_down: "ctrl+d"
+    scroll_page_up: "ctrl+b"
+    scroll_page_down: "ctrl+f"
+    
+    # Searching
+    search_forward: "/"
+    search_backward: "?"
+    next_match: "n"
+    prev_match: "shift+n"
+    
+    # Commands
+    command_mode: ":"
+    quit: ":q"
+    force_quit: ":q!"
+
+# Context-sensitive Keybindings
+context:
+  # When search is focused
+  search:
+    execute_search:
+      - "enter"
+    clear_search:
+      - "escape"
+    cancel_search:
+      - "ctrl+c"
+  
+  # When command is running
+  running:
+    interrupt:
+      - "ctrl+c"
+    kill:
+      - "ctrl+break"
+    force_kill:
+      - "ctrl+shift+k"
+  
+  # In dangerous command confirmation
+  confirmation:
+    confirm:
+      - "y"
+      - "enter"
+    cancel:
+      - "n"
+      - "escape"
+    force_confirm:
+      - "shift+y"
+
+# Accessibility
+accessibility:
+  # Screen reader support
+  announce_commands: true
+  announce_status: true
+  
+  # High contrast mode
+  high_contrast:
+    - "ctrl+shift+h"
+  
+  # Font size (if supported)
+  increase_font:
+    - "ctrl+plus"
+    - "ctrl+equal"
+  
+  decrease_font:
+    - "ctrl+minus"
+  
+  reset_font:
+    - "ctrl+shift+0"
+
+# Mouse Support
+mouse:
+  # Enable mouse support
+  enabled: true
+  
+  # Mouse actions
+  click_to_focus: true
+  double_click_execute: true
+  right_click_menu: true
+  scroll_output: true
+
+# Custom User Keybindings
+# Users can override any keybinding by creating a user-keybindings.yaml file
+user_overrides:
+  # Example:
+  # global:
+  #   quit: ["ctrl+q"]
+  # command_tree:
+  #   execute_command: ["space"]

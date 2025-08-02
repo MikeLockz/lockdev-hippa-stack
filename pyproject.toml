@@ -1,0 +1,220 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hipaa-tui"
+version = "0.1.0"
+description = "Terminal User Interface for HIPAA Infrastructure Stack"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "HIPAA Infrastructure Team", email = "team@example.com"},
+]
+keywords = ["tui", "terminal", "infrastructure", "hipaa", "aws", "pulumi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Terminals",
+    "Topic :: Utilities",
+]
+
+dependencies = [
+    # Core TUI framework
+    "textual>=0.45.0",
+    
+    # Rich text and formatting
+    "rich>=13.0.0",
+    
+    # Configuration and data
+    "pyyaml>=6.0",
+    
+    # Command line interface
+    "click>=8.0.0",
+    
+    # File system monitoring
+    "watchdog>=3.0.0",
+    
+    # System monitoring
+    "psutil>=5.9.0",
+    
+    # AWS SDK (optional, for enhanced AWS checking)
+    "boto3>=1.26.0",
+    
+    # Async utilities
+    "aiofiles>=22.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    
+    # Code quality
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    
+    # Documentation
+    "sphinx>=6.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    
+    # Development tools
+    "pre-commit>=3.0.0",
+]
+
+aws = [
+    # Enhanced AWS integration
+    "boto3>=1.26.0",
+    "botocore>=1.29.0",
+    "awscli>=1.32.0",
+]
+
+pulumi = [
+    # Pulumi integration
+    "pulumi>=3.0.0",
+    "pulumi-aws>=6.0.0",
+]
+
+all = [
+    "hipaa-tui[dev,aws,pulumi]",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/your-org/lockdev-hippa-stack"
+"Bug Reports" = "https://github.com/your-org/lockdev-hippa-stack/issues"
+"Source" = "https://github.com/your-org/lockdev-hippa-stack"
+"Documentation" = "https://github.com/your-org/lockdev-hippa-stack/wiki"
+
+[project.scripts]
+hipaa-tui = "tui.app:main"
+tui = "tui.app:main"
+
+[tool.setuptools]
+packages = ["tui"]
+
+[tool.setuptools.package-data]
+tui = [
+    "config/*.yaml",
+    "themes/*.py",
+]
+
+# Black configuration
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+# isort configuration
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["tui"]
+known_third_party = ["textual", "rich", "click", "yaml", "boto3"]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+# mypy configuration
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "textual.*",
+    "rich.*",
+    "watchdog.*",
+    "psutil.*",
+    "boto3.*",
+    "botocore.*",
+]
+ignore_missing_imports = true
+
+# pytest configuration
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = [
+    "tui/tests",
+]
+pythonpath = [
+    ".",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "aws: marks tests that require AWS credentials",
+    "pulumi: marks tests that require Pulumi",
+]
+asyncio_mode = "auto"
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["tui"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"

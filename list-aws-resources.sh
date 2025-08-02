@@ -32,75 +32,87 @@ list_resources() {
     
     case $service in
         "ec2")
-            count=$(aws ec2 describe-instances --query 'length(Reservations[].Instances[])' --output text 2>/dev/null || echo "0")
+            count=$(aws ec2 describe-instances --no-cli-pager --query 'length(Reservations[].Instances[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws ec2 describe-instances --query 'Reservations[].Instances[].[InstanceId,InstanceType,State.Name,Tags[?Key==`Name`].Value|[0]]' --output table 2>/dev/null || echo "No EC2 instances found"
+                echo "   EC2 Instances:"
+                aws ec2 describe-instances --no-cli-pager --query 'Reservations[].Instances[].[InstanceId,InstanceType,State.Name,Tags[?Key==`Name`].Value|[0]]' --output table 2>/dev/null || echo "   No EC2 instances found"
             fi
             ;;
         "rds")
-            count=$(aws rds describe-db-instances --query 'length(DBInstances[])' --output text 2>/dev/null || echo "0")
+            count=$(aws rds describe-db-instances --no-cli-pager --query 'length(DBInstances[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws rds describe-db-instances --query 'DBInstances[].[DBInstanceIdentifier,DBInstanceClass,Engine,DBInstanceStatus]' --output table 2>/dev/null || echo "No RDS instances found"
+                echo "   RDS Instances:"
+                aws rds describe-db-instances --no-cli-pager --query 'DBInstances[].[DBInstanceIdentifier,DBInstanceClass,Engine,DBInstanceStatus]' --output table 2>/dev/null || echo "   No RDS instances found"
             fi
             ;;
         "s3")
-            count=$(aws s3api list-buckets --query 'length(Buckets[])' --output text 2>/dev/null || echo "0")
+            count=$(aws s3api list-buckets --no-cli-pager --query 'length(Buckets[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws s3api list-buckets --query 'Buckets[].[Name,CreationDate]' --output table 2>/dev/null || echo "No S3 buckets found"
+                echo "   S3 Buckets:"
+                aws s3api list-buckets --no-cli-pager --query 'Buckets[].[Name,CreationDate]' --output table 2>/dev/null || echo "   No S3 buckets found"
             fi
             ;;
         "ecs")
-            count=$(aws ecs list-clusters --query 'length(clusterArns[])' --output text 2>/dev/null || echo "0")
+            count=$(aws ecs list-clusters --no-cli-pager --query 'length(clusterArns[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws ecs list-clusters --query 'clusterArns[]' --output table 2>/dev/null || echo "No ECS clusters found"
+                echo "   ECS Clusters:"
+                aws ecs list-clusters --no-cli-pager --query 'clusterArns[]' --output table 2>/dev/null || echo "   No ECS clusters found"
             fi
             ;;
         "lambda")
-            count=$(aws lambda list-functions --query 'length(Functions[])' --output text 2>/dev/null || echo "0")
+            count=$(aws lambda list-functions --no-cli-pager --query 'length(Functions[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws lambda list-functions --query 'Functions[].[FunctionName,Runtime,State]' --output table 2>/dev/null || echo "No Lambda functions found"
+                echo "   Lambda Functions:"
+                aws lambda list-functions --no-cli-pager --query 'Functions[].[FunctionName,Runtime,State]' --output table 2>/dev/null || echo "   No Lambda functions found"
             fi
             ;;
         "iam")
-            count=$(aws iam list-users --query 'length(Users[])' --output text 2>/dev/null || echo "0")
+            count=$(aws iam list-users --no-cli-pager --query 'length(Users[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws iam list-users --query 'Users[].[UserName,CreateDate]' --output table 2>/dev/null || echo "No IAM users found"
+                echo "   IAM Users:"
+                aws iam list-users --no-cli-pager --query 'Users[].[UserName,CreateDate]' --output table 2>/dev/null || echo "   No IAM users found"
             fi
             ;;
         "cloudformation")
-            count=$(aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --query 'length(StackSummaries[])' --output text 2>/dev/null || echo "0")
+            count=$(aws cloudformation list-stacks --no-cli-pager --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --query 'length(StackSummaries[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --query 'StackSummaries[].[StackName,StackStatus,CreationTime]' --output table 2>/dev/null || echo "No CloudFormation stacks found"
+                echo "   CloudFormation Stacks:"
+                aws cloudformation list-stacks --no-cli-pager --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --query 'StackSummaries[].[StackName,StackStatus,CreationTime]' --output table 2>/dev/null || echo "   No CloudFormation stacks found"
             fi
             ;;
         "vpc")
-            count=$(aws ec2 describe-vpcs --query 'length(Vpcs[])' --output text 2>/dev/null || echo "0")
+            count=$(aws ec2 describe-vpcs --no-cli-pager --query 'length(Vpcs[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws ec2 describe-vpcs --query 'Vpcs[].[VpcId,CidrBlock,State,IsDefault]' --output table 2>/dev/null || echo "No VPCs found"
+                echo "   VPCs:"
+                aws ec2 describe-vpcs --no-cli-pager --query 'Vpcs[].[VpcId,CidrBlock,State,IsDefault]' --output table 2>/dev/null || echo "   No VPCs found"
             fi
             ;;
         "elb")
-            count=$(aws elbv2 describe-load-balancers --query 'length(LoadBalancers[])' --output text 2>/dev/null || echo "0")
+            count=$(aws elbv2 describe-load-balancers --no-cli-pager --query 'length(LoadBalancers[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws elbv2 describe-load-balancers --query 'LoadBalancers[].[LoadBalancerName,Type,Scheme,State.Code]' --output table 2>/dev/null || echo "No load balancers found"
+                echo "   Load Balancers:"
+                aws elbv2 describe-load-balancers --no-cli-pager --query 'LoadBalancers[].[LoadBalancerName,Type,Scheme,State.Code]' --output table 2>/dev/null || echo "   No load balancers found"
             fi
             ;;
         "kms")
-            count=$(aws kms list-keys --query 'length(Keys[])' --output text 2>/dev/null || echo "0")
+            count=$(aws kms list-keys --no-cli-pager --query 'length(Keys[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws kms list-keys --query 'Keys[].[KeyId]' --output table 2>/dev/null || echo "No KMS keys found"
+                echo "   KMS Keys:"
+                aws kms list-keys --no-cli-pager --query 'Keys[].[KeyId]' --output table 2>/dev/null || echo "   No KMS keys found"
             fi
             ;;
         "cloudtrail")
-            count=$(aws cloudtrail describe-trails --query 'length(trailList[])' --output text 2>/dev/null || echo "0")
+            count=$(aws cloudtrail describe-trails --no-cli-pager --query 'length(trailList[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws cloudtrail describe-trails --query 'trailList[].[Name,S3BucketName,IsLogging]' --output table 2>/dev/null || echo "No CloudTrail trails found"
+                echo "   CloudTrail Trails:"
+                aws cloudtrail describe-trails --no-cli-pager --query 'trailList[].[Name,S3BucketName,IsLogging]' --output table 2>/dev/null || echo "   No CloudTrail trails found"
             fi
             ;;
         "route53")
-            count=$(aws route53 list-hosted-zones --query 'length(HostedZones[])' --output text 2>/dev/null || echo "0")
+            count=$(aws route53 list-hosted-zones --no-cli-pager --query 'length(HostedZones[])' --output text 2>/dev/null || echo "0")
             if [ "$count" -gt 0 ]; then
-                aws route53 list-hosted-zones --query 'HostedZones[].[Name,ResourceRecordSetCount]' --output table 2>/dev/null || echo "No Route53 hosted zones found"
+                echo "   Route53 Hosted Zones:"
+                aws route53 list-hosted-zones --no-cli-pager --query 'HostedZones[].[Name,ResourceRecordSetCount]' --output table 2>/dev/null || echo "   No Route53 hosted zones found"
             fi
             ;;
     esac
@@ -108,6 +120,9 @@ list_resources() {
     echo "   Found: $count"
     echo ""
 }
+
+# Set AWS CLI to not use pager
+export AWS_PAGER=""
 
 # List resources by category
 echo "🖥️  COMPUTE RESOURCES"

@@ -131,6 +131,120 @@ class DataFlowDiagramGenerator:
             # Lambda processing
             s3_data >> Edge(label="Event Trigger", style="dotted") >> lambda_functions
             lambda_functions >> Edge(label="Process", style="dashed") >> s3_backups
+
+    def create_dataflow_drawio_diagram(self):
+        """Create data flow architecture DrawIO diagram with AWS best practices styling"""
+        drawio_gen = DrawIOGenerator(self.output_dir)
+        
+        mxfile = drawio_gen.create_mxfile("HIPAA Data Flow Architecture", "dataflow_arch")
+        diagram = drawio_gen.create_diagram(mxfile, "HIPAA Data Flow Architecture", "dataflow_arch")
+        mxgraphmodel = drawio_gen.create_graph_model(diagram)
+        root = drawio_gen.create_root(mxgraphmodel)
+        
+        # External Users
+        drawio_gen.add_rectangle(root, "users", "👥 External Users\nHIPAA Authorized\n🔐 Authenticated", 
+                                50, 50, 140, 60, fill_color="#181717", stroke_color="#181717")
+        
+        # API & Edge Layer
+        edge_container = drawio_gen.add_swimlane(root, "edge", "🌐 API & Edge Layer", 250, 50, 700, 120)
+        drawio_gen.add_rectangle(root, "cloudfront", "🌐 CloudFront CDN\nGlobal Distribution\n🔐 TLS 1.3", 
+                                50, 30, 160, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="edge")
+        drawio_gen.add_rectangle(root, "api_gateway", "⚖️ API Gateway\nRate Limiting\n🛡️ WAF Protection", 
+                                230, 30, 160, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="edge")
+        drawio_gen.add_rectangle(root, "certificates", "🔐 Certificate Manager\nSSL/TLS Certificates\n🔒 Encryption in Transit", 
+                                410, 30, 160, 60, fill_color="#D93232", stroke_color="#D93232", parent="edge")
+        
+        # Application Layer
+        app_container = drawio_gen.add_swimlane(root, "app", "🚀 Application Processing Layer", 250, 200, 700, 150)
+        drawio_gen.add_rectangle(root, "ecs", "🐳 ECS Fargate Cluster\nHIPAA-Compliant Containers\n🔄 Auto Scaling", 
+                                50, 30, 200, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="app")
+        drawio_gen.add_rectangle(root, "lambda", "⚡ Lambda Functions\nEvent Processing\n📝 Serverless", 
+                                270, 30, 180, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="app")
+        drawio_gen.add_rectangle(root, "secrets", "🔑 Secrets Manager\nDB Credentials\n🔐 Encrypted Storage", 
+                                470, 30, 160, 70, fill_color="#D93232", stroke_color="#D93232", parent="app")
+        
+        # Encryption & Key Management
+        encryption_container = drawio_gen.add_swimlane(root, "encryption", "🔐 Encryption & Key Management", 250, 380, 700, 120)
+        drawio_gen.add_rectangle(root, "kms", "🔐 AWS KMS\nCustomer Master Keys\n🔄 90-day Rotation", 
+                                50, 30, 160, 60, fill_color="#D93232", stroke_color="#D93232", parent="encryption")
+        drawio_gen.add_rectangle(root, "envelope", "📊 Envelope Encryption\nData Keys\n🔒 Hierarchical", 
+                                230, 30, 160, 60, fill_color="#2E73B8", stroke_color="#2E73B8", parent="encryption")
+        drawio_gen.add_rectangle(root, "audit", "📋 Audit Logging\nKey Usage\n🔍 Compliance Tracking", 
+                                410, 30, 160, 60, fill_color="#2E73B8", stroke_color="#2E73B8", parent="encryption")
+        
+        # Primary Database Layer
+        db_container = drawio_gen.add_swimlane(root, "database", "🗄️ Primary Data Storage", 50, 530, 900, 150)
+        
+        # RDS PostgreSQL
+        rds_container = drawio_gen.add_swimlane(root, "rds", "🗄️ RDS PostgreSQL 14", 50, 50, 400, 120)
+        drawio_gen.add_cylinder(root, "rds_primary", "🗄️ RDS Primary\nMulti-AZ Deployment\n💾 Encrypted at Rest", 
+                               50, 30, 180, 70, fill_color="#2E73B8", stroke_color="#2E73B8", parent="rds")
+        drawio_gen.add_cylinder(root, "rds_replica", "📖 RDS Read Replica\nRead Scaling\n🔄 Cross-AZ", 
+                               250, 30, 160, 70, fill_color="#2E73B8", stroke_color="#2E73B8", parent="rds")
+        
+        # Cache Layer
+        cache_container = drawio_gen.add_swimlane(root, "cache", "⚡ Cache Layer", 470, 50, 200, 120)
+        drawio_gen.add_rectangle(root, "redis", "⚡ ElastiCache Redis\nSession Storage\n🚀 Performance Boost", 
+                                50, 30, 140, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="cache")
+        
+        # Object Storage Layer
+        storage_container = drawio_gen.add_swimlane(root, "storage", "📦 Object Storage Layer", 50, 720, 900, 150)
+        drawio_gen.add_cylinder(root, "s3_data", "📊 S3 Data Lake\nUnstructured Data\n🔐 SSE-KMS Encryption", 
+                               50, 30, 160, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="storage")
+        drawio_gen.add_cylinder(root, "s3_backups", "💾 S3 Backup Storage\nCross-Region Replication\n🔄 Lifecycle Policies", 
+                               230, 30, 180, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="storage")
+        drawio_gen.add_cylinder(root, "s3_logs", "📋 S3 Log Storage\nAccess Logs\n📊 Audit Trail", 
+                               430, 30, 140, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="storage")
+        drawio_gen.add_cylinder(root, "s3_archive", "🗄️ S3 Glacier Archive\nLong-term Retention\n💰 Cost Optimization", 
+                               600, 30, 160, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="storage")
+        
+        # Backup & Recovery
+        backup_container = drawio_gen.add_swimlane(root, "backup", "💾 Backup & Recovery", 50, 910, 900, 120)
+        drawio_gen.add_rectangle(root, "aws_backup", "🔄 AWS Backup\nAutomated Snapshots\n📅 Scheduled", 
+                                50, 30, 160, 60, fill_color="#28A745", stroke_color="#28A745", parent="backup")
+        drawio_gen.add_cylinder(root, "snapshot", "📸 DB Snapshots\nPoint-in-time Recovery\n⏰ 7-day Retention", 
+                               230, 30, 160, 60, fill_color="#2E73B8", stroke_color="#2E73B8", parent="backup")
+        drawio_gen.add_rectangle(root, "cross_region", "🌍 Cross-Region Backup\nDR Strategy\n🔄 Automated", 
+                                420, 30, 180, 60, fill_color="#28A745", stroke_color="#28A745", parent="backup")
+        
+        # Monitoring & Analytics
+        analytics_container = drawio_gen.add_swimlane(root, "analytics", "📊 Monitoring & Analytics", 50, 1070, 900, 120)
+        drawio_gen.add_rectangle(root, "cloudwatch", "📊 CloudWatch\nMetrics & Alarms\n🚨 Real-time Monitoring", 
+                                50, 30, 160, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="analytics")
+        drawio_gen.add_rectangle(root, "kinesis", "📈 Kinesis Data Stream\nReal-time Processing\n🔄 Stream Analytics", 
+                                230, 30, 160, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="analytics")
+        drawio_gen.add_rectangle(root, "glue", "🔧 AWS Glue\nETL Jobs\n📊 Data Transformation", 
+                                410, 30, 140, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="analytics")
+        drawio_gen.add_rectangle(root, "athena", "🔍 Athena Queries\nSQL Analytics\n📊 Business Intelligence", 
+                                580, 30, 160, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="analytics")
+        
+        # Connections
+        drawio_gen.add_edge(root, "e1", "users", "cloudfront")
+        drawio_gen.add_edge(root, "e2", "cloudfront", "api_gateway")
+        drawio_gen.add_edge(root, "e3", "api_gateway", "ecs")
+        drawio_gen.add_edge(root, "e4", "ecs", "secrets")
+        drawio_gen.add_edge(root, "e5", "ecs", "redis")
+        drawio_gen.add_edge(root, "e6", "ecs", "rds_primary")
+        drawio_gen.add_edge(root, "e7", "rds_primary", "rds_replica")
+        drawio_gen.add_edge(root, "e8", "rds_primary", "aws_backup")
+        drawio_gen.add_edge(root, "e9", "aws_backup", "snapshot")
+        drawio_gen.add_edge(root, "e10", "snapshot", "cross_region")
+        drawio_gen.add_edge(root, "e11", "ecs", "s3_data")
+        drawio_gen.add_edge(root, "e12", "s3_data", "s3_backups")
+        drawio_gen.add_edge(root, "e13", "s3_data", "s3_logs")
+        drawio_gen.add_edge(root, "e14", "s3_data", "s3_archive")
+        drawio_gen.add_edge(root, "e15", "ecs", "cloudwatch")
+        drawio_gen.add_edge(root, "e16", "rds_primary", "cloudwatch")
+        drawio_gen.add_edge(root, "e17", "cloudwatch", "kinesis")
+        drawio_gen.add_edge(root, "e18", "kinesis", "glue")
+        drawio_gen.add_edge(root, "e19", "glue", "athena")
+        drawio_gen.add_edge(root, "e20", "s3_data", "lambda")
+        drawio_gen.add_edge(root, "e21", "lambda", "s3_backups")
+        drawio_gen.add_edge(root, "e22", "kms", "rds_primary")
+        drawio_gen.add_edge(root, "e23", "kms", "s3_data")
+        drawio_gen.add_edge(root, "e24", "kms", "s3_backups")
+        
+        return drawio_gen.save_drawio_file(mxfile, "dataflow_architecture.drawio")
     
     def create_encryption_flow_diagram(self):
         """Create detailed encryption flow diagram"""
@@ -407,11 +521,13 @@ def main():
     if not args.skip_encryption:
         print("🔐 Creating encryption flow diagram...")
         generator.create_encryption_flow_diagram()
+        generator.create_encryption_flow_drawio()
     
     # Create backup flow diagram
     if not args.skip_backup:
         print("💾 Creating backup and recovery flow diagram...")
         generator.create_backup_flow_diagram()
+        generator.create_backup_flow_drawio()
     
     if generator.validate_diagrams():
         print("✅ Phase 3 Complete: All data flow diagrams generated")

@@ -109,7 +109,87 @@ disable_lb_protection() {
     sleep 5
 }
 
-# Clean up RDS instances with dependencies
+# Clear RDS instance data before deletion
+clear_rds_data() {
+    log "Clearing RDS instance data..."
+    
+    local rds_instances=$(aws rds describe-db-instances --query 'DBInstances[?starts_with(DBInstanceIdentifier, `hipaa`)]' --output json)
+    
+    if [ "$rds_instances" = "[]" ]; then
+        log "No RDS instances found to clear data"
+        return 0
+    fi
+    
+    echo "$rds_instances" | jq -r '.[] | .DBInstanceIdentifier + "|" + .Endpoint.Address + "|" + .MasterUsername + "|" + .Engine' | while IFS='|' read -r instance endpoint username engine; do
+        if [ -n "$instance" ] && [ -n "$endpoint" ]; then
+            info "Clearing data from RDS instance: $instance ($engine at $endpoint)"
+            
+            # Get password from AWS Secrets Manager or parameter store
+            local password=""
+            if aws secretsmanager get-secret-value --secret-id "hipaa-$instance" --query 'SecretString' --output text &>/dev/null; then
+                password=$(aws secretsmanager get-secret-value --secret-id "hipaa-$instance" --query 'SecretString' --output text 2>/dev/null)
+            elif aws ssm get-parameter --name "/hipaa/$instance/password" --query 'Parameter.Value' --output text &>/dev/null; then
+                password=$(aws ssm get-parameter --name "/hipaa/$instance/password" --query 'Parameter.Value' --output text 2>/dev/null)
+            else
+                warn "Could not retrieve password for $instance, attempting with default"
+                password="hipaa_secure_password"  # Default fallback
+            fi
+            
+            # Clear data based on database engine
+            case "$engine" in
+                "postgres"|"postgresql")
+                    info "Clearing PostgreSQL data from $instance"
+                    # Connect and drop all user tables/schemas
+                    PGPASSWORD="$password" psql -h "$endpoint" -U "$username" -d postgres -c "
+                        DO \$\$
+                        DECLARE
+                            r RECORD;
+                        BEGIN
+                            -- Drop all schemas except system ones
+                            FOR r IN SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'public') AND schema_name NOT LIKE 'pg_%' LOOP
+                                EXECUTE 'DROP SCHEMA IF EXISTS ' || quote_ident(r.schema_name) || ' CASCADE';
+                            END LOOP;
+                            
+                            -- Drop all tables in public schema
+                            FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+                                EXECUTE 'DROP TABLE IF EXISTS public.' || quote_ident(r.tablename) || ' CASCADE';
+                            END LOOP;
+                            
+                            -- Drop all functions
+                            FOR r IN SELECT routine_schema, routine_name FROM information_schema.routines WHERE routine_schema NOT IN ('information_schema', 'pg_catalog') LOOP
+                                EXECUTE 'DROP FUNCTION IF EXISTS ' || quote_ident(r.routine_schema) || '.' || quote_ident(r.routine_name) || ' CASCADE';
+                            END LOOP;
+                        END
+                        \$\$;
+                    " 2>/dev/null || warn "Could not connect to PostgreSQL instance $instance"
+                    ;;
+                    
+                "mysql")
+                    info "Clearing MySQL data from $instance"
+                    # Connect and drop all user databases
+                    mysql -h "$endpoint" -u "$username" -p"$password" -e "
+                        SELECT CONCAT('DROP DATABASE IF EXISTS \`', schema_name, '\`;') 
+                        FROM information_schema.schemata 
+                        WHERE schema_name NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')
+                        INTO OUTFILE '/tmp/drop_databases.sql';
+                        SOURCE /tmp/drop_databases.sql;
+                    " 2>/dev/null || warn "Could not connect to MySQL instance $instance"
+                    ;;
+                    
+                *)
+                    warn "Unsupported database engine: $engine, skipping data clearing"
+                    ;;
+            esac
+            
+            # Log data clearing completion
+            info "Data cleared from RDS instance: $instance"
+        fi
+    done
+    
+    sleep 5
+}
+
+# Clean up RDS instances with dependencies (after data clearing)
 cleanup_rds_instances() {
     log "Cleaning up RDS instances..."
     
@@ -306,6 +386,67 @@ verify_cleanup() {
     log "=== CLEANUP VERIFICATION COMPLETE ==="
 }
 
+# Clean up ECS resources explicitly
+cleanup_ecs_resources() {
+    log "Cleaning up ECS resources..."
+    
+    # Clean up ECS clusters
+    local clusters=$(aws ecs list-clusters --query 'clusterArns[]' --output text | grep -i "hipaa\|dev\|staging\|prod" || echo "")
+    for cluster in $clusters; do
+        if [ -n "$cluster" ]; then
+            info "Processing ECS cluster: $cluster"
+            
+            # Get cluster name from ARN
+            local cluster_name=$(echo "$cluster" | sed 's/.*cluster\///')
+            
+            # List and delete services
+            local services=$(aws ecs list-services --cluster "$cluster_name" --query 'serviceArns[]' --output text 2>/dev/null || echo "")
+            for service in $services; do
+                if [ -n "$service" ]; then
+                    info "Deleting ECS service: $service"
+                    aws ecs delete-service --cluster "$cluster_name" --service "$service" --force --no-cli-pager 2>/dev/null || warn "Could not delete service: $service"
+                fi
+            done
+            
+            # List and stop tasks
+            local tasks=$(aws ecs list-tasks --cluster "$cluster_name" --query 'taskArns[]' --output text 2>/dev/null || echo "")
+            for task in $tasks; do
+                if [ -n "$task" ]; then
+                    info "Stopping ECS task: $task"
+                    aws ecs stop-task --cluster "$cluster_name" --task "$task" --no-cli-pager 2>/dev/null || warn "Could not stop task: $task"
+                fi
+            done
+            
+            # Wait for tasks to stop
+            sleep 10
+            
+            # Delete cluster
+            info "Deleting ECS cluster: $cluster_name"
+            aws ecs delete-cluster --cluster "$cluster_name" --no-cli-pager 2>/dev/null || warn "Could not delete cluster: $cluster_name"
+        fi
+    done
+    
+    # Clean up ECS task definitions
+    local task_definitions=$(aws ecs list-task-definitions --family-prefix "hipaa" --query 'taskDefinitionArns[]' --output text 2>/dev/null || echo "")
+    for td in $task_definitions; do
+        if [ -n "$td" ]; then
+            info "Deregistering ECS task definition: $td"
+            aws ecs deregister-task-definition --task-definition "$td" --no-cli-pager 2>/dev/null || warn "Could not deregister task definition: $td"
+        fi
+    done
+    
+    # Clean up ECS task definitions by status
+    local all_task_defs=$(aws ecs list-task-definitions --query 'taskDefinitionArns[]' --output text | grep -i "hipaa\|dev\|staging\|prod" || echo "")
+    for td in $all_task_defs; do
+        if [ -n "$td" ]; then
+            info "Deregistering ECS task definition: $td"
+            aws ecs deregister-task-definition --task-definition "$td" --no-cli-pager 2>/dev/null || warn "Could not deregister task definition: $td"
+        fi
+    done
+    
+    sleep 5
+}
+
 # Main function
 main() {
     log "Starting enhanced HIPAA infrastructure cleanup..."
@@ -318,7 +459,13 @@ main() {
     # Disable load balancer protection
     disable_lb_protection "$ENVIRONMENT"
     
-    # Clean up RDS instances first (they have dependencies)
+    # Clean up ECS resources first
+    cleanup_ecs_resources
+    
+    # Clear RDS data before deletion
+    clear_rds_data
+    
+    # Clean up RDS instances (they have dependencies)
     cleanup_rds_instances
     
     # Clean up security groups and ENIs

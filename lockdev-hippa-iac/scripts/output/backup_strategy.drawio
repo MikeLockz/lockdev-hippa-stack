@@ -1,0 +1,69 @@
+<?xml version="1.0" ?>
+<mxfile host="app.diagrams.net" modified="2024-01-01" agent="5.0" etag="backup_&amp;_retention_strategy" version="21.1.2" type="device">
+  <diagram name="Backup &amp; Retention Strategy" id="backup_strategy">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="sources" value="Backup Sources" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="200" height="300" as="geometry"/>
+        </mxCell>
+        <mxCell id="rds_source" value="RDS Database" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="sources">
+          <mxGeometry x="50" y="50" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3_source" value="S3 Buckets" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="sources">
+          <mxGeometry x="50" y="120" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="efs_source" value="EFS File Systems" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="sources">
+          <mxGeometry x="50" y="190" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="targets" value="Backup Targets" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="300" y="50" width="500" height="300" as="geometry"/>
+        </mxCell>
+        <mxCell id="daily" value="Daily Snapshots
+(7 days)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="targets">
+          <mxGeometry x="50" y="50" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="weekly" value="Weekly Backups
+(4 weeks)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="targets">
+          <mxGeometry x="50" y="120" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="monthly" value="Monthly Backups
+(12 months)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="targets">
+          <mxGeometry x="50" y="190" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="glacier" value="Archive
+(S3 Glacier
+7 years)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="targets">
+          <mxGeometry x="200" y="120" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="cross" value="Cross-Region" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="370" width="500" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="replication" value="Cross-Region
+Replication" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="cross">
+          <mxGeometry x="50" y="50" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="dr_backup" value="DR Region
+Backup" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="cross">
+          <mxGeometry x="200" y="50" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="kms" value="KMS Encryption" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="650" y="200" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="rds_source" target="daily"/>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="s3_source" target="daily"/>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="efs_source" target="daily"/>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="targets" source="daily" target="weekly"/>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="targets" source="weekly" target="monthly"/>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="targets" source="monthly" target="glacier"/>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="cross" source="daily" target="replication"/>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="cross" source="replication" target="dr_backup"/>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="kms" target="daily"/>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="kms" target="weekly"/>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="kms" target="monthly"/>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="kms" target="glacier"/>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

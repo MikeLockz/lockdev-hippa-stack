@@ -63,42 +63,53 @@ class DrawIOGenerator:
         return root
     
     def add_rectangle(self, root, id, label, x, y, width, height, 
-                     fill_color="#dae8fc", stroke_color="#6c8ebf", parent="1"):
-        """Add a rectangle shape"""
+                     fill_color="#FF9900", stroke_color="#FF9900", parent="1", style_type="aws"):
+        """Add a rectangle shape with AWS-style formatting"""
         cell = ET.SubElement(root, 'mxCell', id=id)
         cell.set('value', label)
-        cell.set('style', f'rounded=1;whiteSpace=wrap;html=1;fillColor={fill_color};strokeColor={stroke_color};')
+        
+        if style_type == "aws":
+            # AWS-style with orange theme and modern look
+            style = f'rounded=1;whiteSpace=wrap;html=1;fillColor={fill_color};strokeColor={stroke_color};strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;'
+        else:
+            style = f'rounded=1;whiteSpace=wrap;html=1;fillColor={fill_color};strokeColor={stroke_color};'
+            
+        cell.set('style', style)
         cell.set('vertex', '1')
         cell.set('parent', parent)
-        ET.SubElement(cell, 'mxGeometry', x=str(x), y=str(y), width=str(width), height=str(height))
+        geometry = ET.SubElement(cell, 'mxGeometry', x=str(x), y=str(y), width=str(width), height=str(height))
+        geometry.set('as', 'geometry')
         return cell
     
     def add_swimlane(self, root, id, label, x, y, width, height, 
                     fill_color="#e1d5e7", stroke_color="#9673a6"):
-        """Add a swimlane container"""
+        """Add a swimlane container with AWS styling"""
         cell = ET.SubElement(root, 'mxCell', id=id)
         cell.set('value', label)
-        cell.set('style', 'swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;')
+        cell.set('style', 'swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;')
         cell.set('vertex', '1')
         cell.set('parent', '1')
-        ET.SubElement(cell, 'mxGeometry', x=str(x), y=str(y), width=str(width), height=str(height))
+        geometry = ET.SubElement(cell, 'mxGeometry', x=str(x), y=str(y), width=str(width), height=str(height))
+        geometry.set('as', 'geometry')
         return cell
     
     def add_cylinder(self, root, id, label, x, y, width, height, 
-                    fill_color="#e1d5e7", stroke_color="#9673a6", parent="1"):
-        """Add a cylinder shape (for databases/storage)"""
+                    fill_color="#2E73B8", stroke_color="#2E73B8", parent="1"):
+        """Add a cylinder shape (for databases/storage) with AWS styling"""
         cell = ET.SubElement(root, 'mxCell', id=id)
         cell.set('value', label)
-        cell.set('style', f'shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor={fill_color};strokeColor={stroke_color};')
+        style = f'shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor={fill_color};strokeColor={stroke_color};strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;'
+        cell.set('style', style)
         cell.set('vertex', '1')
         cell.set('parent', parent)
-        ET.SubElement(cell, 'mxGeometry', x=str(x), y=str(y), width=str(width), height=str(height))
+        geometry = ET.SubElement(cell, 'mxGeometry', x=str(x), y=str(y), width=str(width), height=str(height))
+        geometry.set('as', 'geometry')
         return cell
     
     def add_edge(self, root, id, source, target, parent="1"):
-        """Add an edge/connection between elements"""
+        """Add an edge/connection between elements with AWS styling"""
         edge = ET.SubElement(root, 'mxCell', id=id)
-        edge.set('style', 'edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;')
+        edge.set('style', 'edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;')
         edge.set('edge', '1')
         edge.set('parent', parent)
         edge.set('source', source)
@@ -120,51 +131,67 @@ class DrawIOGenerator:
         return filepath
     
     def create_network_architecture(self, filename="network_architecture.drawio"):
-        """Create a complete network architecture diagram"""
+        """Create a complete network architecture diagram matching PNG style"""
         # Create base structure
         mxfile = self.create_mxfile("HIPAA Network Architecture", "network_arch")
         diagram = self.create_diagram(mxfile, "HIPAA Network Architecture", "network_arch")
         mxgraphmodel = self.create_graph_model(diagram)
         root = self.create_root(mxgraphmodel)
         
-        # Internet Gateway
-        self.add_rectangle(root, "internet", "Internet Gateway", 350, 50, 120, 60)
+        # Internet Gateway (top center)
+        self.add_rectangle(root, "internet", "🌐 Internet Gateway", 350, 50, 120, 60, 
+                          fill_color="#FF9900", stroke_color="#FF9900", style_type="aws")
         
-        # VPC Container
-        vpc = self.add_swimlane(root, "vpc", "HIPAA VPC (10.0.0.0/16)", 50, 150, 700, 400)
+        # VPC Container (large container)
+        vpc = self.add_swimlane(root, "vpc", "🏗️ HIPAA VPC (10.0.0.0/16)", 50, 150, 750, 450)
         
-        # Public Subnets
-        self.add_rectangle(root, "public1", "Public Subnet 1\n(10.0.1.0/24)\nus-east-1a", 
-                          50, 50, 150, 80, parent="vpc")
-        self.add_rectangle(root, "public2", "Public Subnet 2\n(10.0.2.0/24)\nus-east-1b", 
-                          220, 50, 150, 80, parent="vpc")
+        # Public Subnets (top-left)
+        self.add_rectangle(root, "public1", "📡 Public Subnet 1\n10.0.1.0/24\n🇺🇸 us-east-1a", 
+                          50, 50, 160, 80, fill_color="#FF9900", stroke_color="#FF9900", parent="vpc")
+        self.add_rectangle(root, "public2", "📡 Public Subnet 2\n10.0.2.0/24\n🇺🇸 us-east-1b", 
+                          220, 50, 160, 80, fill_color="#FF9900", stroke_color="#FF9900", parent="vpc")
         
-        # Private Subnets
-        self.add_rectangle(root, "private1", "Private Subnet 1\n(10.0.3.0/24)\nus-east-1a", 
-                          50, 150, 150, 80, fill_color="#d5e8d4", stroke_color="#82b366", parent="vpc")
-        self.add_rectangle(root, "private2", "Private Subnet 2\n(10.0.4.0/24)\nus-east-1b", 
-                          220, 150, 150, 80, fill_color="#d5e8d4", stroke_color="#82b366", parent="vpc")
+        # NAT Gateways in public subnets
+        self.add_rectangle(root, "nat1", "🔄 NAT Gateway 1", 70, 140, 120, 50, 
+                          fill_color="#FF9900", stroke_color="#FF9900", parent="vpc")
+        self.add_rectangle(root, "nat2", "🔄 NAT Gateway 2", 240, 140, 120, 50, 
+                          fill_color="#FF9900", stroke_color="#FF9900", parent="vpc")
         
-        # Load Balancer
-        self.add_rectangle(root, "alb", "Application Load Balancer", 
-                          400, 70, 120, 60, fill_color="#f8cecc", stroke_color="#b85450", parent="vpc")
+        # Private Subnets (bottom-left)
+        self.add_rectangle(root, "private1", "🔒 Private Subnet 1\n10.0.3.0/24\n🇺🇸 us-east-1a", 
+                          50, 220, 160, 80, fill_color="#2E73B8", stroke_color="#2E73B8", parent="vpc")
+        self.add_rectangle(root, "private2", "🔒 Private Subnet 2\n10.0.4.0/24\n🇺🇸 us-east-1b", 
+                          220, 220, 160, 80, fill_color="#2E73B8", stroke_color="#2E73B8", parent="vpc")
         
-        # ECS Cluster
-        self.add_rectangle(root, "ecs", "ECS Cluster", 
-                          400, 170, 120, 60, parent="vpc")
+        # Load Balancer (center-top)
+        self.add_rectangle(root, "alb", "⚖️ Application Load Balancer\nInternet-facing", 
+                          400, 70, 180, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="vpc")
         
-        # RDS Database
-        self.add_cylinder(root, "rds", "RDS PostgreSQL\n(Multi-AZ)", 
-                         580, 140, 100, 80, parent="vpc")
+        # ECS Cluster (center)
+        self.add_rectangle(root, "ecs", "🐳 ECS Fargate Cluster", 
+                          400, 170, 180, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="vpc")
         
-        # S3 Logs
-        self.add_cylinder(root, "s3", "S3 Logs Bucket", 
-                         580, 250, 100, 80, fill_color="#fff2cc", stroke_color="#d6b656", parent="vpc")
+        # RDS Database (right)
+        self.add_cylinder(root, "rds", "🗄️ RDS PostgreSQL\nMulti-AZ Deployment\n🔐 Encrypted", 
+                         600, 150, 120, 80, fill_color="#2E73B8", stroke_color="#2E73B8", parent="vpc")
         
-        # Connections
+        # S3 Logs (bottom-right)
+        self.add_cylinder(root, "s3", "📦 S3 Logs Bucket\n🔐 Server-side Encryption\n📊 Lifecycle Policies", 
+                         600, 280, 120, 80, fill_color="#FF9900", stroke_color="#FF9900", parent="vpc")
+        
+        # Security Groups
+        self.add_rectangle(root, "sg_alb", "🛡️ Security Group\nALB (Port 443)", 
+                          600, 70, 120, 40, fill_color="#D93232", stroke_color="#D93232", parent="vpc")
+        self.add_rectangle(root, "sg_ecs", "🛡️ Security Group\nECS (Port 80)", 
+                          600, 220, 120, 40, fill_color="#D93232", stroke_color="#D93232", parent="vpc")
+        
+        # Connections with proper routing
         self.add_edge(root, "edge1", "internet", "alb")
         self.add_edge(root, "edge2", "alb", "ecs", parent="vpc")
         self.add_edge(root, "edge3", "ecs", "rds", parent="vpc")
+        self.add_edge(root, "edge4", "ecs", "s3", parent="vpc")
+        self.add_edge(root, "edge5", "nat1", "private1", parent="vpc")
+        self.add_edge(root, "edge6", "nat2", "private2", parent="vpc")
         
         return self.save_drawio_file(mxfile, filename)
 

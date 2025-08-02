@@ -1,39 +1,87 @@
 #!/usr/bin/env python3
-"""
-Simple test script to verify TUI functionality
-"""
+"""Test script for the HIPAA Infrastructure Stack TUI."""
 
 import sys
 import os
+from pathlib import Path
 
-# Add current directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the tui directory to the Python path
+tui_path = Path(__file__).parent / "tui"
+sys.path.insert(0, str(tui_path))
 
 try:
-    from tui_make_textual import CommandDatabase, MakeCommand
+    from tui.app import HIPAATUIApp
     
-    print("✅ TUI Module Import Successful")
-    print(f"📊 Total Commands: {len(CommandDatabase.COMMANDS)}")
+    def main():
+        """Run the TUI application."""
+        print("🚀 Starting HIPAA Infrastructure Stack TUI...")
+        print("📋 Phase 1 Framework Test")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        
+        app = HIPAATUIApp()
+        app.run()
     
-    categories = CommandDatabase.get_all_categories()
-    print(f"📂 Categories: {', '.join(categories)}")
-    
-    # Test command retrieval
-    quickstart_commands = CommandDatabase.get_commands_by_category("quickstart")
-    print(f"🚀 Quick Start Commands: {len(quickstart_commands)}")
-    for cmd in quickstart_commands:
-        print(f"   • {cmd.name} - {cmd.description}")
-    
-    # Test search functionality
-    search_results = CommandDatabase.search_commands("deploy")
-    print(f"🔍 'deploy' search results: {len(search_results)}")
-    
-    print("\n✅ All TUI tests passed!")
-    
+    if __name__ == "__main__":
+        main()
+
 except ImportError as e:
-    print(f"❌ Import Error: {e}")
-    print("💡 Make sure textual is installed: pip install textual")
-    sys.exit(1)
+    print(f"❌ Import error: {e}")
+    print("🔍 Checking TUI structure...")
+    
+    # Check if all required files exist
+    required_files = [
+        "tui/__init__.py",
+        "tui/app.py",
+        "tui/models/__init__.py",
+        "tui/models/command.py",
+        "tui/models/status.py",
+        "tui/components/__init__.py",
+        "tui/components/status_bar.py",
+        "tui/components/command_tree.py",
+        "tui/components/output_pane.py",
+        "tui/services/__init__.py", 
+        "tui/services/makefile_parser.py",
+        "tui/themes/__init__.py",
+        "tui/themes/dark.py",
+        "tui/config/default.yaml",
+        "tui/config/keybindings.yaml",
+    ]
+    
+    missing_files = []
+    for file_path in required_files:
+        if not os.path.exists(file_path):
+            missing_files.append(file_path)
+    
+    if missing_files:
+        print("❌ Missing files:")
+        for file_path in missing_files:
+            print(f"  - {file_path}")
+    else:
+        print("✅ All required files exist")
+        print("🔍 Checking imports...")
+        
+        # Try to import individual modules
+        try:
+            from tui.models import command, status
+            print("✅ Models import successfully")
+        except Exception as e:
+            print(f"❌ Models import error: {e}")
+        
+        try:
+            from tui.services import makefile_parser
+            print("✅ Services import successfully")
+        except Exception as e:
+            print(f"❌ Services import error: {e}")
+        
+        try:
+            from tui.components import status_bar, command_tree, output_pane
+            print("✅ Components import successfully")
+        except Exception as e:
+            print(f"❌ Components import error: {e}")
+        
+        print(f"Original error: {e}")
+
 except Exception as e:
-    print(f"❌ Error: {e}")
-    sys.exit(1)
+    print(f"❌ Unexpected error: {e}")
+    import traceback
+    traceback.print_exc()

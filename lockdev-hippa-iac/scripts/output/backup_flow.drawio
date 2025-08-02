@@ -1,0 +1,65 @@
+<?xml version="1.0" ?>
+<mxfile host="app.diagrams.net" modified="2024-01-01" agent="5.0" etag="hipaa_backup_&amp;_recovery_flow" version="21.1.2" type="device">
+  <diagram name="HIPAA Backup &amp; Recovery Flow" id="backup_flow">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="prod" value="Production Systems" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="200" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="rds_prod" value="RDS Production" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="prod">
+          <mxGeometry x="50" y="50" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3_prod" value="S3 Production Data" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="prod">
+          <mxGeometry x="50" y="100" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="backup" value="Backup Services" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="300" y="50" width="200" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="backup_vault" value="AWS Backup Vault" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="backup">
+          <mxGeometry x="50" y="50" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="backup_plan" value="Backup Plans" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="backup">
+          <mxGeometry x="50" y="100" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="storage" value="Backup Storage" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="550" y="50" width="300" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3_warm" value="S3 Standard-IA
+(30 days)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="storage">
+          <mxGeometry x="50" y="50" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3_cold" value="S3 Glacier
+(90 days)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="storage">
+          <mxGeometry x="50" y="100" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3_deep" value="S3 Glacier Deep
+(1+ years)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="storage">
+          <mxGeometry x="180" y="75" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="recovery" value="Disaster Recovery" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="900" y="50" width="200" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="rds_dr" value="RDS DR Instance" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="recovery">
+          <mxGeometry x="50" y="50" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3_dr" value="S3 DR Storage" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="recovery">
+          <mxGeometry x="50" y="100" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="cloudwatch" value="Backup Monitoring" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="400" y="220" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="rds_prod" target="backup_plan"/>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="s3_prod" target="backup_plan"/>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="backup_plan" target="backup_vault"/>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="backup_vault" target="s3_warm"/>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="s3_warm" target="s3_cold"/>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="s3_cold" target="s3_deep"/>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="backup_vault" target="rds_dr"/>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="backup_vault" target="s3_dr"/>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="backup_plan" target="cloudwatch"/>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

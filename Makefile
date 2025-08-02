@@ -40,8 +40,20 @@ tui: ## Launch Terminal User Interface for make commands (Rich version)
 		python3 tui_make.py; \
 	fi
 
-start: ## Launch Textual TUI for make commands (Modern interface)
-	@echo "🚀 Starting HIPAA Infrastructure Stack TUI (Textual)..."
+start: ## Launch modern Phase 1 TUI (Textual framework)
+	@echo "🚀 Starting HIPAA Infrastructure Stack TUI (Phase 1)..."
+	@python launch_tui.py
+
+tui-phase1: ## Launch Phase 1 TUI framework directly
+	@echo "🎯 Starting Phase 1 TUI Framework..."
+	@python tui/app.py
+
+tui-test: ## Test Phase 1 TUI framework components
+	@echo "🧪 Testing Phase 1 TUI Framework..."
+	@python test_tui_phase1.py
+
+old-start: ## Launch old Textual TUI for make commands (Legacy)
+	@echo "🚀 Starting HIPAA Infrastructure Stack TUI (Legacy Textual)..."
 	@if command -v poetry >/dev/null 2>&1; then \
 		if [ -f "pyproject.toml" ]; then \
 			poetry run python tui_make_textual.py; \
@@ -635,9 +647,13 @@ clean-prod: ## Destroy production infrastructure (auto-setup if needed)
 clean-dev-complete: ## Completely remove development (infrastructure + service user) with protection handling
 	@echo "💥 Complete development cleanup with comprehensive protection handling..."
 	@echo "🔍 This will automatically handle:"
+	@echo "   • ECS clusters and Fargate services"
+	@echo "   • ECS task definitions and containers"
+	@echo "   • Application Load Balancers and target groups"
+	@echo "   • RDS data clearing (PostgreSQL/MySQL) before deletion"
+	@echo "   • RDS instance deletion with protection handling"
 	@echo "   • Protected Pulumi resources"
 	@echo "   • Load balancer deletion protection"
-	@echo "   • RDS deletion protection"
 	@echo "   • KMS keys and encryption"
 	@echo "   • VPC and networking components"
 	@echo "   • CloudTrail trails"
@@ -746,9 +762,13 @@ clean-dev-complete: ## Completely remove development (infrastructure + service u
 clean-staging-complete: ## Completely remove staging (infrastructure + service user) with protection handling
 	@echo "💥 Complete staging cleanup with comprehensive protection handling..."
 	@echo "🔍 This will automatically handle:"
+	@echo "   • ECS clusters and Fargate services"
+	@echo "   • ECS task definitions and containers"
+	@echo "   • Application Load Balancers and target groups"
+	@echo "   • RDS data clearing (PostgreSQL/MySQL) before deletion"
+	@echo "   • RDS instance deletion with protection handling"
 	@echo "   • Protected Pulumi resources"
 	@echo "   • Load balancer deletion protection"
-	@echo "   • RDS deletion protection"
 	@echo "   • KMS keys and encryption"
 	@echo "   • VPC and networking components"
 	@echo "   • CloudTrail trails"
@@ -860,9 +880,13 @@ clean-prod-complete: ## Completely remove production (infrastructure + service u
 	@echo "This will destroy ALL PRODUCTION resources!"
 	@echo "🔍 Enhanced protection handling will disable load balancer deletion protection, ENI dependencies, and comprehensive cleanup"
 	@echo "🔍 This will automatically handle:"
+	@echo "   • ECS clusters and Fargate services"
+	@echo "   • ECS task definitions and containers"
+	@echo "   • Application Load Balancers and target groups"
+	@echo "   • RDS data clearing (PostgreSQL/MySQL) before deletion"
+	@echo "   • RDS instance deletion with protection handling"
 	@echo "   • Protected Pulumi resources"
 	@echo "   • Load balancer deletion protection"
-	@echo "   • RDS deletion protection"
 	@echo "   • KMS keys and encryption"
 	@echo "   • VPC and networking components"
 	@echo "   • CloudTrail trails"

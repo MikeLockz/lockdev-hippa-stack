@@ -160,7 +160,7 @@ class ComputeDiagramGenerator:
             app_service >> rds
     
     def create_drawio_diagram(self, compute_data):
-        """Create draw.io XML diagram format using utility"""
+        """Create draw.io XML diagram format using utility with AWS best practices"""
         drawio_gen = DrawIOGenerator(self.output_dir)
         
         mxfile = drawio_gen.create_mxfile("HIPAA Compute Architecture", "compute_arch")
@@ -168,54 +168,90 @@ class ComputeDiagramGenerator:
         mxgraphmodel = drawio_gen.create_graph_model(diagram)
         root = drawio_gen.create_root(mxgraphmodel)
         
-        # Users
-        drawio_gen.add_rectangle(root, "users", "Users", 350, 50, 100, 60)
+        # External users
+        drawio_gen.add_rectangle(root, "users", "👥 External Users", 350, 50, 120, 60, 
+                                fill_color="#FF9900", stroke_color="#FF9900")
         
-        # Load Balancer tier
-        alb_container = drawio_gen.add_swimlane(root, "lb_tier", "Load Balancer Tier", 50, 150, 700, 100)
-        drawio_gen.add_rectangle(root, "alb", "ALB\nApplication Load Balancer", 
-                                50, 30, 150, 50, parent="lb_tier")
-        drawio_gen.add_rectangle(root, "target_group", "Target Group\nHealth Check: /health", 
-                                220, 30, 150, 50, parent="lb_tier")
+        # Load Balancer tier with modern AWS styling
+        lb_container = drawio_gen.add_swimlane(root, "lb_tier", "⚖️ Load Balancer Tier", 50, 150, 750, 120)
+        drawio_gen.add_rectangle(root, "alb", "⚖️ Application Load Balancer\n🔐 SSL Termination\n🎯 Health Checks", 
+                                50, 30, 180, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="lb_tier")
+        drawio_gen.add_rectangle(root, "target_group", "🎯 Target Group\nHealth Check: /health\n🔄 Auto-registered", 
+                                250, 30, 160, 60, fill_color="#2E73B8", stroke_color="#2E73B8", parent="lb_tier")
+        drawio_gen.add_rectangle(root, "waf", "🛡️ AWS WAF\nRate Limiting\n🚫 Malicious Traffic", 
+                                430, 30, 140, 60, fill_color="#D93232", stroke_color="#D93232", parent="lb_tier")
         
-        # Auto Scaling
-        drawio_gen.add_rectangle(root, "auto_scaling", "Auto Scaling\nMin: 2, Max: 10", 
-                                400, 280, 150, 60)
+        # Auto Scaling with policies
+        drawio_gen.add_rectangle(root, "auto_scaling", "📈 Auto Scaling Group\nMin: 2, Max: 10, Desired: 2\n🔄 Health-based Scaling", 
+                                400, 300, 220, 60, fill_color="#FF9900", stroke_color="#FF9900")
         
-        # ECS Cluster
-        ecs_container = drawio_gen.add_swimlane(root, "ecs_cluster", "ECS Fargate Cluster", 50, 280, 700, 150)
-        drawio_gen.add_rectangle(root, "app_service", "App Service\nFargate Tasks\nDesired: 2", 
-                                50, 30, 150, 50, parent="ecs_cluster")
-        drawio_gen.add_rectangle(root, "health_service", "Health Service\nSidecar Container", 
-                                220, 30, 150, 50, parent="ecs_cluster")
+        # ECS Cluster with detailed services
+        ecs_container = drawio_gen.add_swimlane(root, "ecs_cluster", "🐳 ECS Fargate Cluster - HIPAA Compliant", 50, 300, 750, 200)
         
-        # Container Registry
-        ecr_container = drawio_gen.add_swimlane(root, "registry", "Container Registry", 50, 450, 700, 100)
-        drawio_gen.add_rectangle(root, "ecr_repo", "ECR Repository\nhipaa-app", 
-                                50, 30, 150, 50, parent="registry")
-        drawio_gen.add_rectangle(root, "image_scanning", "Image Scanning\nVulnerability Scans", 
-                                220, 30, 150, 50, parent="registry")
+        # Main application service
+        drawio_gen.add_rectangle(root, "app_service", "🚀 Main Application Service\nFargate Tasks: 2\n🔒 Private Subnets\n💾 Persistent Storage", 
+                                50, 30, 200, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="ecs_cluster")
         
-        # Supporting Services
-        support_container = drawio_gen.add_swimlane(root, "support", "Supporting Services", 50, 570, 700, 100)
-        drawio_gen.add_cylinder(root, "s3_logs", "S3 Logs\nApplication Logs", 
-                               50, 30, 120, 50, parent="support")
-        drawio_gen.add_rectangle(root, "cloudwatch", "CloudWatch\nMetrics & Alarms", 
-                                200, 30, 150, 50, parent="support")
+        # Health service (sidecar pattern)
+        drawio_gen.add_rectangle(root, "health_service", "🏥 Health Check Service\nSidecar Container\n📊 Monitoring Agent", 
+                                270, 30, 180, 70, fill_color="#2E73B8", stroke_color="#2E73B8", parent="ecs_cluster")
         
-        # Database
-        drawio_gen.add_cylinder(root, "rds", "RDS PostgreSQL\nMulti-AZ", 580, 400, 100, 80)
+        # Logging service (sidecar pattern)
+        drawio_gen.add_rectangle(root, "logging_service", "📝 Logging Service\nFluent Bit Agent\n📊 CloudWatch Logs", 
+                                470, 30, 180, 70, fill_color="#2E73B8", stroke_color="#2E73B8", parent="ecs_cluster")
         
-        # Connections
+        # Container Registry with security
+        registry_container = drawio_gen.add_swimlane(root, "registry", "🗄️ Container Registry & Security", 50, 530, 750, 120)
+        drawio_gen.add_rectangle(root, "ecr_repo", "🗄️ ECR Repository\nhipaa-app:latest\n🔐 Private Registry", 
+                                50, 30, 180, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="registry")
+        drawio_gen.add_rectangle(root, "image_scanning", "🔍 Image Scanning\nClair + Trivy\n🚨 Vulnerability Reports", 
+                                250, 30, 180, 60, fill_color="#D93232", stroke_color="#D93232", parent="registry")
+        drawio_gen.add_rectangle(root, "lifecycle_policy", "📋 Lifecycle Policies\nImage Retention\n🔄 Auto-cleanup", 
+                                450, 30, 180, 60, fill_color="#2E73B8", stroke_color="#2E73B8", parent="registry")
+        
+        # Supporting Services with HIPAA compliance
+        support_container = drawio_gen.add_swimlane(root, "support", "🔧 Supporting Services & Monitoring", 50, 670, 750, 120)
+        drawio_gen.add_cylinder(root, "s3_logs", "📦 S3 Logs Bucket\nApplication & Access Logs\n🔐 SSE-S3 Encrypted", 
+                               50, 30, 180, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="support")
+        drawio_gen.add_rectangle(root, "cloudwatch", "📊 CloudWatch\nMetrics, Logs, Alarms\n🚨 HIPAA Monitoring", 
+                                250, 30, 180, 60, fill_color="#FF9900", stroke_color="#FF9900", parent="support")
+        drawio_gen.add_rectangle(root, "xray", "🔍 AWS X-Ray\nDistributed Tracing\n📈 Performance Insights", 
+                                450, 30, 180, 60, fill_color="#2E73B8", stroke_color="#2E73B8", parent="support")
+        
+        # Database tier
+        db_container = drawio_gen.add_swimlane(root, "database", "🗄️ Database Tier - Multi-AZ", 50, 810, 750, 120)
+        drawio_gen.add_cylinder(root, "rds", "🗄️ RDS PostgreSQL 14\nMulti-AZ Deployment\n🔐 Encrypted at Rest\n💾 Automated Backups", 
+                               50, 30, 220, 70, fill_color="#2E73B8", stroke_color="#2E73B8", parent="database")
+        drawio_gen.add_cylinder(root, "rds_backup", "💾 RDS Backups\n7-day retention\n🔄 Point-in-time Recovery", 
+                               300, 30, 180, 70, fill_color="#2E73B8", stroke_color="#2E73B8", parent="database")
+        drawio_gen.add_cylinder(root, "s3_backup", "📦 S3 Backup Bucket\nCross-region replication\n🔄 Disaster Recovery", 
+                               510, 30, 180, 70, fill_color="#FF9900", stroke_color="#FF9900", parent="database")
+        
+        # Security Groups and IAM
+        security_container = drawio_gen.add_swimlane(root, "security", "🔐 Security Groups & IAM", 50, 950, 750, 120)
+        drawio_gen.add_rectangle(root, "sg_alb", "🛡️ Security Group\nALB (443 → 80)\n🔐 TLS Termination", 
+                                50, 30, 180, 60, fill_color="#D93232", stroke_color="#D93232", parent="security")
+        drawio_gen.add_rectangle(root, "sg_ecs", "🛡️ Security Group\nECS (80 → 5432)\n🔒 Private Subnet Access", 
+                                250, 30, 180, 60, fill_color="#D93232", stroke_color="#D93232", parent="security")
+        drawio_gen.add_rectangle(root, "iam_role", "🔑 IAM Roles\nTask Execution Role\n📝 Least Privilege", 
+                                450, 30, 180, 60, fill_color="#D93232", stroke_color="#D93232", parent="security")
+        
+        # Connections with detailed flow
         drawio_gen.add_edge(root, "edge1", "users", "alb")
         drawio_gen.add_edge(root, "edge2", "alb", "target_group", parent="lb_tier")
         drawio_gen.add_edge(root, "edge3", "target_group", "app_service")
         drawio_gen.add_edge(root, "edge4", "auto_scaling", "app_service")
         drawio_gen.add_edge(root, "edge5", "app_service", "ecr_repo")
         drawio_gen.add_edge(root, "edge6", "ecr_repo", "image_scanning", parent="registry")
-        drawio_gen.add_edge(root, "edge7", "app_service", "s3_logs")
-        drawio_gen.add_edge(root, "edge8", "app_service", "cloudwatch")
-        drawio_gen.add_edge(root, "edge9", "app_service", "rds")
+        drawio_gen.add_edge(root, "edge7", "image_scanning", "lifecycle_policy", parent="registry")
+        drawio_gen.add_edge(root, "edge8", "app_service", "s3_logs")
+        drawio_gen.add_edge(root, "edge9", "app_service", "cloudwatch")
+        drawio_gen.add_edge(root, "edge10", "app_service", "xray")
+        drawio_gen.add_edge(root, "edge11", "app_service", "rds")
+        drawio_gen.add_edge(root, "edge12", "rds", "rds_backup")
+        drawio_gen.add_edge(root, "edge13", "rds_backup", "s3_backup")
+        drawio_gen.add_edge(root, "edge14", "app_service", "sg_ecs")
+        drawio_gen.add_edge(root, "edge15", "ecs", "iam_role")
         
         return drawio_gen.save_drawio_file(mxfile, "compute_architecture.drawio")
 

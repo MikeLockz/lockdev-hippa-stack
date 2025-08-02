@@ -1,0 +1,83 @@
+<?xml version="1.0" ?>
+<mxfile host="app.diagrams.net" modified="2024-01-01" agent="5.0" etag="hipaa_encryption_flow" version="21.1.2" type="device">
+  <diagram name="HIPAA Encryption Flow" id="encryption_flow">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="users" value="Users" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="100" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="app" value="Application" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="200" y="50" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="transport" value="Transport Layer Encryption" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="150" width="300" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="tls_edge" value="TLS 1.3
+Edge Certificates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="transport">
+          <mxGeometry x="50" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="tls_internal" value="TLS 1.3
+Internal Certificates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="transport">
+          <mxGeometry x="180" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="app_layer" value="Application Layer Encryption" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="400" y="150" width="300" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="jwt" value="JWT Tokens" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="app_layer">
+          <mxGeometry x="50" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="api_keys" value="API Keys" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="app_layer">
+          <mxGeometry x="180" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="data_layer" value="Data Layer Encryption" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="270" width="300" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="kms_master" value="KMS Master Key" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="data_layer">
+          <mxGeometry x="50" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="kms_data" value="KMS Data Key" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="data_layer">
+          <mxGeometry x="180" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="db_enc" value="Database Encryption" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="400" y="270" width="300" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="rds_enc" value="RDS
+AES-256" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="db_enc">
+          <mxGeometry x="50" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="backup_enc" value="Encrypted
+Backups" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="db_enc">
+          <mxGeometry x="180" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="storage_enc" value="Storage Encryption" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="390" width="300" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3_enc" value="S3
+SSE-S3" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="storage_enc">
+          <mxGeometry x="50" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="s3_kms" value="S3
+SSE-KMS" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#2E73B8;strokeColor=#2E73B8;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="storage_enc">
+          <mxGeometry x="180" y="30" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="key_rotation" value="Key Rotation
+(90 days)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;strokeColor=#FF9900;strokeWidth=2;fontColor=#ffffff;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="400" y="390" width="120" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="users" target="tls_edge"/>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="tls_edge" target="app"/>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="app" target="jwt"/>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="app" target="tls_internal"/>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="tls_internal" target="rds_enc"/>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="data_layer" source="kms_master" target="kms_data"/>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="data_layer" source="kms_data" target="rds_enc"/>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="storage_enc" source="kms_data" target="s3_enc"/>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="storage_enc" source="kms_data" target="s3_kms"/>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="rds_enc" target="backup_enc"/>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="key_rotation" target="kms_master"/>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
