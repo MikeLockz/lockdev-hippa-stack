@@ -20,7 +20,9 @@ black = "^23.0.0"
 flake8 = "^6.0.0"
 mypy = "^1.0.0"
 bandit = "^1.7.0"
-pre-commit = "^3.0.0"
+pre-commit = "^4.0.0"
+diagrams = "^0.24.4"
+pydot = "^4.0.1"
 
 [build-system]
 requires = ["poetry-core"]

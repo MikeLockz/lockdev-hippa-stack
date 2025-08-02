@@ -17,6 +17,7 @@ from diagrams.aws.security import IAMRole
 from diagrams.onprem.client import Users
 import argparse
 import logging
+from drawio_utils import DrawIOGenerator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,13 +34,11 @@ class ComputeDiagramGenerator:
         """Generate DOT file from Pulumi stack"""
         try:
             logger.info("Generating Pulumi graph...")
-            cmd = ["pulumi", "graph", "--stack", self.stack_name]
-            with open(self.dot_file, 'w') as f:
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd="../")
-                if result.returncode != 0:
-                    logger.error(f"Pulumi graph failed: {result.stderr}")
-                    return False
-                f.write(result.stdout)
+            cmd = ["pulumi", "stack", "graph", self.dot_file, "--stack", self.stack_name]
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd="../")
+            if result.returncode != 0:
+                logger.error(f"Pulumi graph failed: {result.stderr}")
+                return False
             logger.info(f"DOT file generated: {self.dot_file}")
             return True
         except Exception as e:
@@ -160,14 +159,84 @@ class ComputeDiagramGenerator:
             app_service >> cloudwatch
             app_service >> rds
     
+    def create_drawio_diagram(self, compute_data):
+        """Create draw.io XML diagram format using utility"""
+        drawio_gen = DrawIOGenerator(self.output_dir)
+        
+        mxfile = drawio_gen.create_mxfile("HIPAA Compute Architecture", "compute_arch")
+        diagram = drawio_gen.create_diagram(mxfile, "HIPAA Compute Architecture", "compute_arch")
+        mxgraphmodel = drawio_gen.create_graph_model(diagram)
+        root = drawio_gen.create_root(mxgraphmodel)
+        
+        # Users
+        drawio_gen.add_rectangle(root, "users", "Users", 350, 50, 100, 60)
+        
+        # Load Balancer tier
+        alb_container = drawio_gen.add_swimlane(root, "lb_tier", "Load Balancer Tier", 50, 150, 700, 100)
+        drawio_gen.add_rectangle(root, "alb", "ALB\nApplication Load Balancer", 
+                                50, 30, 150, 50, parent="lb_tier")
+        drawio_gen.add_rectangle(root, "target_group", "Target Group\nHealth Check: /health", 
+                                220, 30, 150, 50, parent="lb_tier")
+        
+        # Auto Scaling
+        drawio_gen.add_rectangle(root, "auto_scaling", "Auto Scaling\nMin: 2, Max: 10", 
+                                400, 280, 150, 60)
+        
+        # ECS Cluster
+        ecs_container = drawio_gen.add_swimlane(root, "ecs_cluster", "ECS Fargate Cluster", 50, 280, 700, 150)
+        drawio_gen.add_rectangle(root, "app_service", "App Service\nFargate Tasks\nDesired: 2", 
+                                50, 30, 150, 50, parent="ecs_cluster")
+        drawio_gen.add_rectangle(root, "health_service", "Health Service\nSidecar Container", 
+                                220, 30, 150, 50, parent="ecs_cluster")
+        
+        # Container Registry
+        ecr_container = drawio_gen.add_swimlane(root, "registry", "Container Registry", 50, 450, 700, 100)
+        drawio_gen.add_rectangle(root, "ecr_repo", "ECR Repository\nhipaa-app", 
+                                50, 30, 150, 50, parent="registry")
+        drawio_gen.add_rectangle(root, "image_scanning", "Image Scanning\nVulnerability Scans", 
+                                220, 30, 150, 50, parent="registry")
+        
+        # Supporting Services
+        support_container = drawio_gen.add_swimlane(root, "support", "Supporting Services", 50, 570, 700, 100)
+        drawio_gen.add_cylinder(root, "s3_logs", "S3 Logs\nApplication Logs", 
+                               50, 30, 120, 50, parent="support")
+        drawio_gen.add_rectangle(root, "cloudwatch", "CloudWatch\nMetrics & Alarms", 
+                                200, 30, 150, 50, parent="support")
+        
+        # Database
+        drawio_gen.add_cylinder(root, "rds", "RDS PostgreSQL\nMulti-AZ", 580, 400, 100, 80)
+        
+        # Connections
+        drawio_gen.add_edge(root, "edge1", "users", "alb")
+        drawio_gen.add_edge(root, "edge2", "alb", "target_group", parent="lb_tier")
+        drawio_gen.add_edge(root, "edge3", "target_group", "app_service")
+        drawio_gen.add_edge(root, "edge4", "auto_scaling", "app_service")
+        drawio_gen.add_edge(root, "edge5", "app_service", "ecr_repo")
+        drawio_gen.add_edge(root, "edge6", "ecr_repo", "image_scanning", parent="registry")
+        drawio_gen.add_edge(root, "edge7", "app_service", "s3_logs")
+        drawio_gen.add_edge(root, "edge8", "app_service", "cloudwatch")
+        drawio_gen.add_edge(root, "edge9", "app_service", "rds")
+        
+        return drawio_gen.save_drawio_file(mxfile, "compute_architecture.drawio")
+
     def validate_diagram(self):
         """Validate generated diagram"""
-        diagram_path = f"{self.output_dir}/compute_architecture.png"
-        if os.path.exists(diagram_path):
-            logger.info(f"✅ Compute diagram generated: {diagram_path}")
+        png_path = f"{self.output_dir}/compute_architecture.png"
+        drawio_path = f"{self.output_dir}/compute_architecture.drawio"
+        
+        png_exists = os.path.exists(png_path)
+        drawio_exists = os.path.exists(drawio_path)
+        
+        if png_exists and drawio_exists:
+            logger.info(f"✅ Compute diagrams generated:")
+            logger.info(f"   PNG: {png_path}")
+            logger.info(f"   Draw.io: {drawio_path}")
             return True
         else:
-            logger.error("❌ Compute diagram generation failed")
+            if not png_exists:
+                logger.error("❌ Compute PNG diagram generation failed")
+            if not drawio_exists:
+                logger.error("❌ Compute Draw.io diagram generation failed")
             return False
 
 def main():
@@ -196,10 +265,12 @@ def main():
         return 1
     
     generator.create_compute_diagram(compute_data)
+    generator.create_drawio_diagram(compute_data)
     
     if generator.validate_diagram():
-        print("✅ Phase 2 Complete: Compute architecture diagram generated")
-        print(f"📊 Output: {args.output}/compute_architecture.png")
+        print("✅ Phase 2 Complete: Compute architecture diagrams generated")
+        print(f"📊 PNG Output: {args.output}/compute_architecture.png")
+        print(f"📊 Draw.io Output: {args.output}/compute_architecture.drawio")
         print("\n🔍 Manual validation checklist:")
         print("   [ ] ECS Fargate cluster configuration shown")
         print("   [ ] Auto Scaling policies visualized")
@@ -208,6 +279,7 @@ def main():
         print("   [ ] Container task definitions and resource limits")
         print("   [ ] Integration with CloudWatch monitoring")
         print("   [ ] HIPAA compliance indicators (encryption, scanning)")
+        print("   [ ] Draw.io file opens correctly")
         return 0
     else:
         print("❌ Phase 2 Failed: Diagram validation failed")

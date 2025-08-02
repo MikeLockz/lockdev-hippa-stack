@@ -1,0 +1,25 @@
+{
+  "disaster_recovery_strategy": {
+    "rto_minutes": 15,
+    "rpo_minutes": 5,
+    "backup_retention_days": 35,
+    "cross_region_backup": true,
+    "multi_az": true,
+    "auto_failover": true
+  },
+  "components": {
+    "primary_region": "us-east-1",
+    "secondary_region": "us-west-2",
+    "database_backup": "Automated RDS snapshots with cross-region replication",
+    "storage_backup": "S3 cross-region replication with lifecycle policies",
+    "monitoring": "CloudWatch alarms and Route 53 health checks",
+    "notification": "SNS topics for incident alerts",
+    "encryption": "KMS key replication for DR region"
+  },
+  "recovery_procedures": {
+    "database_recovery": "Restore from latest snapshot in DR region",
+    "application_deployment": "ECS task definition deployment in DR region",
+    "dns_failover": "Route 53 health check and failover",
+    "storage_sync": "S3 replication and EFS backup restore"
+  }
+}

@@ -1,0 +1,53 @@
+<?xml version="1.0" ?>
+<mxfile host="app.diagrams.net" modified="2024-01-01" agent="5.0" etag="hipaa_network_architecture" version="21.1.2" type="device">
+  <diagram name="HIPAA Network Architecture" id="network_arch">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="internet" value="Internet Gateway" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="350" y="50" width="120" height="60"/>
+        </mxCell>
+        <mxCell id="vpc" value="HIPAA VPC (10.0.0.0/16)" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="150" width="700" height="400"/>
+        </mxCell>
+        <mxCell id="public1" value="Public Subnet 1
+(10.0.1.0/24)
+us-east-1a" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vpc">
+          <mxGeometry x="50" y="50" width="150" height="80"/>
+        </mxCell>
+        <mxCell id="public2" value="Public Subnet 2
+(10.0.2.0/24)
+us-east-1b" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vpc">
+          <mxGeometry x="220" y="50" width="150" height="80"/>
+        </mxCell>
+        <mxCell id="private1" value="Private Subnet 1
+(10.0.3.0/24)
+us-east-1a" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="vpc">
+          <mxGeometry x="50" y="150" width="150" height="80"/>
+        </mxCell>
+        <mxCell id="private2" value="Private Subnet 2
+(10.0.4.0/24)
+us-east-1b" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="vpc">
+          <mxGeometry x="220" y="150" width="150" height="80"/>
+        </mxCell>
+        <mxCell id="alb" value="Application Load Balancer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="vpc">
+          <mxGeometry x="400" y="70" width="120" height="60"/>
+        </mxCell>
+        <mxCell id="ecs" value="ECS Cluster" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vpc">
+          <mxGeometry x="400" y="170" width="120" height="60"/>
+        </mxCell>
+        <mxCell id="rds" value="RDS PostgreSQL
+(Multi-AZ)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="vpc">
+          <mxGeometry x="580" y="140" width="100" height="80"/>
+        </mxCell>
+        <mxCell id="s3" value="S3 Logs Bucket" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="vpc">
+          <mxGeometry x="580" y="250" width="100" height="80"/>
+        </mxCell>
+        <mxCell id="edge1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="internet" target="alb"/>
+        <mxCell id="edge2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="vpc" source="alb" target="ecs"/>
+        <mxCell id="edge3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="vpc" source="ecs" target="rds"/>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

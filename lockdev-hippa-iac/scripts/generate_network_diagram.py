@@ -16,6 +16,7 @@ from diagrams.generic.network import Subnet
 from diagrams.onprem.client import Users
 import argparse
 import logging
+from drawio_utils import DrawIOGenerator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -32,13 +33,11 @@ class NetworkDiagramGenerator:
         """Generate DOT file from Pulumi stack"""
         try:
             logger.info("Generating Pulumi graph...")
-            cmd = ["pulumi", "graph", "--stack", self.stack_name]
-            with open(self.dot_file, 'w') as f:
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd="../")
-                if result.returncode != 0:
-                    logger.error(f"Pulumi graph failed: {result.stderr}")
-                    return False
-                f.write(result.stdout)
+            cmd = ["pulumi", "stack", "graph", self.dot_file, "--stack", self.stack_name]
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd="../")
+            if result.returncode != 0:
+                logger.error(f"Pulumi graph failed: {result.stderr}")
+                return False
             logger.info(f"DOT file generated: {self.dot_file}")
             return True
         except Exception as e:
@@ -145,14 +144,29 @@ class NetworkDiagramGenerator:
                 nat1 >> private_subnet1
                 nat2 >> private_subnet2
     
+    def create_drawio_diagram(self, network_data):
+        """Create draw.io XML diagram format using utility"""
+        drawio_gen = DrawIOGenerator(self.output_dir)
+        return drawio_gen.create_network_architecture("network_architecture.drawio")
+
     def validate_diagram(self):
         """Validate generated diagram"""
-        diagram_path = f"{self.output_dir}/network_architecture.png"
-        if os.path.exists(diagram_path):
-            logger.info(f"✅ Network diagram generated: {diagram_path}")
+        png_path = f"{self.output_dir}/network_architecture.png"
+        drawio_path = f"{self.output_dir}/network_architecture.drawio"
+        
+        png_exists = os.path.exists(png_path)
+        drawio_exists = os.path.exists(drawio_path)
+        
+        if png_exists and drawio_exists:
+            logger.info(f"✅ Network diagrams generated:")
+            logger.info(f"   PNG: {png_path}")
+            logger.info(f"   Draw.io: {drawio_path}")
             return True
         else:
-            logger.error("❌ Network diagram generation failed")
+            if not png_exists:
+                logger.error("❌ Network PNG diagram generation failed")
+            if not drawio_exists:
+                logger.error("❌ Network Draw.io diagram generation failed")
             return False
 
 def main():
@@ -181,10 +195,12 @@ def main():
         return 1
     
     generator.create_network_diagram(network_data)
+    generator.create_drawio_diagram(network_data)
     
     if generator.validate_diagram():
-        print("✅ Phase 1 Complete: Network architecture diagram generated")
-        print(f"📊 Output: {args.output}/network_architecture.png")
+        print("✅ Phase 1 Complete: Network architecture diagrams generated")
+        print(f"📊 PNG Output: {args.output}/network_architecture.png")
+        print(f"📊 Draw.io Output: {args.output}/network_architecture.drawio")
         print("\n🔍 Manual validation checklist:")
         print("   [ ] VPC boundaries correctly shown")
         print("   [ ] Public/private subnets in correct AZs")
@@ -192,6 +208,7 @@ def main():
         print("   [ ] Security group relationships clear")
         print("   [ ] Load balancer placement accurate")
         print("   [ ] Database tier properly isolated")
+        print("   [ ] Draw.io file opens correctly")
         return 0
     else:
         print("❌ Phase 1 Failed: Diagram validation failed")

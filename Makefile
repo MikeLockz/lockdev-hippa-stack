@@ -554,15 +554,15 @@ validate-env-prod: ## Validate production environment access
 # Phase 2: Infrastructure Deployment (uses service credentials)
 preview-dev: ## Preview dev infrastructure changes (Phase 2: Service User → Preview)
 	@echo "👁️  Previewing development infrastructure..."
-	@cd lockdev-hippa-iac && ENVIRONMENT=dev ./scripts/deploy.sh -o preview
+	@cd lockdev-hippa-iac && AWS_PROFILE=pulumi-deploy-user-dev poetry run pulumi preview --stack hipaa-dev
 
 preview-staging: ## Preview staging infrastructure changes
 	@echo "👁️  Previewing staging infrastructure..."
-	@cd lockdev-hippa-iac && ENVIRONMENT=staging ./scripts/deploy.sh -o preview
+	@cd lockdev-hippa-iac && AWS_PROFILE=pulumi-deploy-user-staging poetry run pulumi preview --stack hipaa-staging
 
 preview-prod: ## Preview production infrastructure changes
 	@echo "👁️  Previewing production infrastructure..."
-	@cd lockdev-hippa-iac && ENVIRONMENT=prod ./scripts/deploy.sh -o preview
+	@cd lockdev-hippa-iac && AWS_PROFILE=pulumi-deploy-user-prod poetry run pulumi preview --stack hipaa-prod
 
 deploy-dev: ## Smart deploy to development (auto-setup + deploy)
 	@echo "🤖 Smart deployment to development environment..."
@@ -632,37 +632,344 @@ clean-prod: ## Destroy production infrastructure (auto-setup if needed)
 	fi
 
 # Complete cleanup (infrastructure + service user)
-clean-dev-complete: ## Completely remove development (infrastructure + service user)
-	@echo "💥 Complete development cleanup with enhanced protection handling..."
-	@echo "🔍 This will handle load balancer deletion protection, ENI dependencies, and comprehensive cleanup"
+clean-dev-complete: ## Completely remove development (infrastructure + service user) with protection handling
+	@echo "💥 Complete development cleanup with comprehensive protection handling..."
+	@echo "🔍 This will automatically handle:"
+	@echo "   • Protected Pulumi resources"
+	@echo "   • Load balancer deletion protection"
+	@echo "   • RDS deletion protection"
+	@echo "   • KMS keys and encryption"
+	@echo "   • VPC and networking components"
+	@echo "   • CloudTrail trails"
+	@echo "   • IAM roles and policies"
+	@echo "   • Empty AND DELETE ALL S3 buckets including CloudTrail"
+	@echo "   • ENI dependencies"
+	@echo "   • Security group dependencies"
+	@echo "   • Force deletion of versioned buckets"
+	@echo "   • Complete account cleanup"
 	@cd lockdev-hippa-iac && \
-		echo "🔄 Setting up enhanced cleanup scripts..." && \
-		chmod +x enhanced-cleanup.sh smart-cleanup.sh force-cleanup.sh && \
-		echo "🧹 Running enhanced comprehensive cleanup..." && \
-		./enhanced-cleanup.sh dev --force
+		echo "🔄 Setting up comprehensive cleanup scripts..." && \
+		chmod +x comprehensive-cleanup.sh enhanced-cleanup.sh smart-cleanup.sh force-cleanup.sh final-cleanup.sh && \
+		echo "🧹 Running comprehensive cleanup with CloudTrail bucket deletion..." && \
+		AWS_PROFILE=dev-root ./comprehensive-cleanup.sh dev --force && \
+		echo "🗑️  Ensuring complete AWS account cleanup..." && \
+		echo "🔍 Cleaning CloudFormation stacks..." && \
+		AWS_PROFILE=dev-root aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --region us-east-1 --query 'StackSummaries[?contains(StackName, `Holori`)].StackName' --output text | tr '\t' '\n' | while read stack; do \
+			if [ -n "$$stack" ]; then \
+				echo "Deleting stack: $$stack"; \
+				AWS_PROFILE=dev-root aws cloudformation delete-stack --stack-name "$$stack" --region us-east-1; \
+				AWS_PROFILE=dev-root aws cloudformation wait stack-delete-complete --stack-name "$$stack" --region us-east-1 2>/dev/null || echo "Stack $$stack deletion failed"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning CloudTrail trails..." && \
+		AWS_PROFILE=dev-root aws cloudtrail describe-trails --region us-east-1 --query 'trailList[*].Name' --output text | tr '\t' '\n' | grep -E '(hipaa|audit)' | while read trail; do \
+			if [ -n "$$trail" ]; then \
+				echo "Deleting trail: $$trail"; \
+				AWS_PROFILE=dev-root aws cloudtrail delete-trail --name "$$trail" --region us-east-1 2>/dev/null || echo "Trail $$trail could not be deleted"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning KMS keys..." && \
+		AWS_PROFILE=dev-root aws kms list-keys --region us-east-1 --query 'Keys[*].KeyId' --output text | tr '\t' '\n' | while read key; do \
+			if [ -n "$$key" ]; then \
+				echo "Scheduling deletion for key: $$key"; \
+				AWS_PROFILE=dev-root aws kms schedule-key-deletion --key-id "$$key" --pending-window-in-days 7 --region us-east-1 2>/dev/null || echo "Key $$key could not be scheduled for deletion"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning non-default VPCs..." && \
+		AWS_PROFILE=dev-root aws ec2 describe-vpcs --region us-east-1 --query 'Vpcs[?IsDefault==`false`].VpcId' --output text | tr '\t' '\n' | while read vpc; do \
+			if [ -n "$$vpc" ]; then \
+				echo "Cleaning VPC: $$vpc"; \
+				AWS_PROFILE=dev-root aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$$vpc" --query 'InternetGateways[*].InternetGatewayId' --output text | tr '\t' '\n' | while read igw; do \
+					if [ -n "$$igw" ]; then \
+						echo "Detaching and deleting IGW: $$igw"; \
+						AWS_PROFILE=dev-root aws ec2 detach-internet-gateway --internet-gateway-id "$$igw" --vpc-id "$$vpc" --region us-east-1 2>/dev/null || true; \
+						AWS_PROFILE=dev-root aws ec2 delete-internet-gateway --internet-gateway-id "$$igw" --region us-east-1 2>/dev/null || true; \
+					fi \
+				done; \
+				AWS_PROFILE=dev-root aws ec2 describe-subnets --filters "Name=vpc-id,Values=$$vpc" --query 'Subnets[*].SubnetId' --output text | tr '\t' '\n' | while read subnet; do \
+					if [ -n "$$subnet" ]; then \
+						echo "Deleting subnet: $$subnet"; \
+						AWS_PROFILE=dev-root aws ec2 delete-subnet --subnet-id "$$subnet" --region us-east-1 2>/dev/null || true; \
+					fi \
+				done; \
+				echo "Deleting VPC: $$vpc"; \
+				AWS_PROFILE=dev-root aws ec2 delete-vpc --vpc-id "$$vpc" --region us-east-1 2>/dev/null || echo "VPC $$vpc requires manual cleanup"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning remaining S3 buckets..." && \
+		AWS_PROFILE=dev-root aws s3 ls --region us-east-1 | awk '{print $$3}' | grep -E '(hipaa|cloudtrail|config|alb)' | while read bucket; do \
+			if [ -n "$$bucket" ]; then \
+				echo "Force deleting bucket: $$bucket"; \
+				AWS_PROFILE=dev-root aws s3 rm "s3://$$bucket" --recursive --no-cli-pager 2>/dev/null || true; \
+				AWS_PROFILE=dev-root aws s3 rb "s3://$$bucket" --force --no-cli-pager 2>/dev/null || \
+				AWS_PROFILE=dev-root aws s3api delete-bucket --bucket "$$bucket" --no-cli-pager 2>/dev/null || \
+				echo "Bucket $$bucket requires manual cleanup"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning IAM roles..." && \
+		AWS_PROFILE=dev-root aws iam list-roles --query 'Roles[?contains(RoleName, `hipaa`) || contains(RoleName, `pulumi`) || contains(RoleName, `cloudtrail`) || contains(RoleName, `ecs`) || contains(RoleName, `rds`)].RoleName' --output text | tr '\t' '\n' | while read role; do \
+			if [ -n "$$role" ]; then \
+				echo "Deleting role: $$role"; \
+				AWS_PROFILE=dev-root aws iam list-role-policies --role-name "$$role" --query 'PolicyNames' --output text | tr '\t' '\n' | while read policy; do \
+					if [ -n "$$policy" ]; then \
+						echo "Detaching policy: $$policy from role: $$role"; \
+						AWS_PROFILE=dev-root aws iam delete-role-policy --role-name "$$role" --policy-name "$$policy" 2>/dev/null || true; \
+					fi \
+				done; \
+				AWS_PROFILE=dev-root aws iam list-attached-role-policies --role-name "$$role" --query 'AttachedPolicies[*].PolicyArn' --output text | tr '\t' '\n' | while read policy_arn; do \
+					if [ -n "$$policy_arn" ]; then \
+						echo "Detaching attached policy: $$policy_arn from role: $$role"; \
+						AWS_PROFILE=dev-root aws iam detach-role-policy --role-name "$$role" --policy-arn "$$policy_arn" 2>/dev/null || true; \
+					fi \
+				done; \
+				AWS_PROFILE=dev-root aws iam delete-role --role-name "$$role" 2>/dev/null || echo "Role $$role requires manual cleanup"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning IAM policies..." && \
+		AWS_PROFILE=dev-root aws iam list-policies --scope Local --query 'Policies[?contains(PolicyName, `hipaa`) || contains(PolicyName, `pulumi`) || contains(PolicyName, `cloudtrail`) || contains(PolicyName, `ecs`) || contains(PolicyName, `rds`)].Arn' --output text | tr '\t' '\n' | while read policy; do \
+			if [ -n "$$policy" ]; then \
+				echo "Deleting policy: $$policy"; \
+				AWS_PROFILE=dev-root aws iam delete-policy --policy-arn "$$policy" 2>/dev/null || echo "Policy $$policy requires manual cleanup"; \
+			fi \
+	done && \
+	echo "✅ Complete development cleanup finished!" && \
+	echo "📊 Final resource check:" && \
+	AWS_PROFILE=dev-root echo "CloudFormation stacks:" && \
+	AWS_PROFILE=dev-root aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --region us-east-1 --query 'StackSummaries[].StackName' --output table && \
+	AWS_PROFILE=dev-root echo "VPCs:" && \
+	AWS_PROFILE=dev-root aws ec2 describe-vpcs --region us-east-1 --query 'Vpcs[].VpcId' --output table && \
+	AWS_PROFILE=dev-root echo "S3 buckets:" && \
+	AWS_PROFILE=dev-root aws s3 ls --region us-east-1 && \
+	AWS_PROFILE=dev-root echo "KMS keys:" && \
+	AWS_PROFILE=dev-root aws kms list-keys --region us-east-1 --query 'Keys[].KeyId' --output table
 
-clean-staging-complete: ## Completely remove staging (infrastructure + service user)
-	@echo "💥 Complete staging cleanup with enhanced protection handling..."
-	@echo "🔍 This will handle load balancer deletion protection, ENI dependencies, and comprehensive cleanup"
+clean-staging-complete: ## Completely remove staging (infrastructure + service user) with protection handling
+	@echo "💥 Complete staging cleanup with comprehensive protection handling..."
+	@echo "🔍 This will automatically handle:"
+	@echo "   • Protected Pulumi resources"
+	@echo "   • Load balancer deletion protection"
+	@echo "   • RDS deletion protection"
+	@echo "   • KMS keys and encryption"
+	@echo "   • VPC and networking components"
+	@echo "   • CloudTrail trails"
+	@echo "   • IAM roles and policies"
+	@echo "   • Empty AND DELETE ALL S3 buckets including CloudTrail"
+	@echo "   • ENI dependencies"
+	@echo "   • Security group dependencies"
+	@echo "   • Force deletion of versioned buckets"
+	@echo "   • Complete account cleanup"
 	@cd lockdev-hippa-iac && {
-		echo "🔄 Setting up enhanced cleanup scripts..."; \
-		chmod +x enhanced-cleanup.sh scripts/cleanup.sh force-cleanup.sh; \
-		echo "🧹 Running enhanced comprehensive cleanup..."; \
-		./enhanced-cleanup.sh staging --force; \
+		echo "🔄 Setting up comprehensive cleanup scripts..."; \
+		chmod +x comprehensive-cleanup.sh enhanced-cleanup.sh smart-cleanup.sh force-cleanup.sh final-cleanup.sh; \
+		echo "🧹 Running comprehensive cleanup with CloudTrail bucket deletion..."; \
+		AWS_PROFILE=dev-root ./comprehensive-cleanup.sh staging --force && \
+		echo "🗑️  Ensuring complete AWS account cleanup..." && \
+		echo "🔍 Cleaning CloudFormation stacks..." && \
+		AWS_PROFILE=dev-root aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --region us-east-1 --query 'StackSummaries[?contains(StackName, `Holori`)].StackName' --output text | tr '\t' '\n' | while read stack; do \
+			if [ -n "$stack" ]; then \
+				echo "Deleting stack: $stack"; \
+				AWS_PROFILE=dev-root aws cloudformation delete-stack --stack-name "$stack" --region us-east-1; \
+				AWS_PROFILE=dev-root aws cloudformation wait stack-delete-complete --stack-name "$stack" --region us-east-1 2>/dev/null || echo "Stack $stack deletion failed"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning CloudTrail trails..." && \
+		AWS_PROFILE=dev-root aws cloudtrail describe-trails --region us-east-1 --query 'trailList[*].Name' --output text | tr '\t' '\n' | grep -E '(hipaa|audit)' | while read trail; do \
+			if [ -n "$trail" ]; then \
+				echo "Deleting trail: $trail"; \
+				AWS_PROFILE=dev-root aws cloudtrail delete-trail --name "$trail" --region us-east-1 2>/dev/null || echo "Trail $trail could not be deleted"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning KMS keys..." && \
+		AWS_PROFILE=dev-root aws kms list-keys --region us-east-1 --query 'Keys[*].KeyId' --output text | tr '\t' '\n' | while read key; do \
+			if [ -n "$key" ]; then \
+				echo "Scheduling deletion for key: $key"; \
+				AWS_PROFILE=dev-root aws kms schedule-key-deletion --key-id "$key" --pending-window-in-days 7 --region us-east-1 2>/dev/null || echo "Key $key could not be scheduled for deletion"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning non-default VPCs..." && \
+		AWS_PROFILE=dev-root aws ec2 describe-vpcs --region us-east-1 --query 'Vpcs[?IsDefault==`false`].VpcId' --output text | tr '\t' '\n' | while read vpc; do \
+			if [ -n "$vpc" ]; then \
+				echo "Cleaning VPC: $vpc"; \
+				AWS_PROFILE=dev-root aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$vpc" --query 'InternetGateways[*].InternetGatewayId' --output text | tr '\t' '\n' | while read igw; do \
+					if [ -n "$igw" ]; then \
+						echo "Detaching and deleting IGW: $igw"; \
+						AWS_PROFILE=dev-root aws ec2 detach-internet-gateway --internet-gateway-id "$igw" --vpc-id "$vpc" --region us-east-1 2>/dev/null || true; \
+						AWS_PROFILE=dev-root aws ec2 delete-internet-gateway --internet-gateway-id "$igw" --region us-east-1 2>/dev/null || true; \
+					fi \
+				done; \
+				AWS_PROFILE=dev-root aws ec2 describe-subnets --filters "Name=vpc-id,Values=$vpc" --query 'Subnets[*].SubnetId' --output text | tr '\t' '\n' | while read subnet; do \
+					if [ -n "$subnet" ]; then \
+						echo "Deleting subnet: $subnet"; \
+						AWS_PROFILE=dev-root aws ec2 delete-subnet --subnet-id "$subnet" --region us-east-1 2>/dev/null || true; \
+					fi \
+				done; \
+				echo "Deleting VPC: $vpc"; \
+				AWS_PROFILE=dev-root aws ec2 delete-vpc --vpc-id "$vpc" --region us-east-1 2>/dev/null || echo "VPC $vpc requires manual cleanup"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning remaining S3 buckets..." && \
+		AWS_PROFILE=dev-root aws s3 ls --region us-east-1 | awk '{print $3}' | grep -E '(hipaa|cloudtrail|config|alb)' | while read bucket; do \
+			if [ -n "$bucket" ]; then \
+				echo "Force deleting bucket: $bucket"; \
+				AWS_PROFILE=dev-root aws s3 rm "s3://$bucket" --recursive --no-cli-pager 2>/dev/null || true; \
+				AWS_PROFILE=dev-root aws s3 rb "s3://$bucket" --force --no-cli-pager 2>/dev/null || \
+				AWS_PROFILE=dev-root aws s3api delete-bucket --bucket "$bucket" --no-cli-pager 2>/dev/null || \
+				echo "Bucket $bucket requires manual cleanup"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning IAM roles..." && \
+		AWS_PROFILE=dev-root aws iam list-roles --query 'Roles[?contains(RoleName, `hipaa`) || contains(RoleName, `pulumi`) || contains(RoleName, `cloudtrail`) || contains(RoleName, `ecs`) || contains(RoleName, `rds`)].RoleName' --output text | tr '\t' '\n' | while read role; do \
+			if [ -n "$role" ]; then \
+				echo "Deleting role: $role"; \
+				AWS_PROFILE=dev-root aws iam list-role-policies --role-name "$role" --query 'PolicyNames' --output text | tr '\t' '\n' | while read policy; do \
+					if [ -n "$policy" ]; then \
+						echo "Detaching policy: $policy from role: $role"; \
+						AWS_PROFILE=dev-root aws iam delete-role-policy --role-name "$role" --policy-name "$policy" 2>/dev/null || true; \
+					fi \
+				done; \
+				AWS_PROFILE=dev-root aws iam list-attached-role-policies --role-name "$role" --query 'AttachedPolicies[*].PolicyArn' --output text | tr '\t' '\n' | while read policy_arn; do \
+					if [ -n "$policy_arn" ]; then \
+						echo "Detaching attached policy: $policy_arn from role: $role"; \
+						AWS_PROFILE=dev-root aws iam detach-role-policy --role-name "$role" --policy-arn "$policy_arn" 2>/dev/null || true; \
+					fi \
+				done; \
+				AWS_PROFILE=dev-root aws iam delete-role --role-name "$role" 2>/dev/null || echo "Role $role requires manual cleanup"; \
+			fi \
+	done && \
+		echo "🔍 Cleaning IAM policies..." && \
+		AWS_PROFILE=dev-root aws iam list-policies --scope Local --query 'Policies[?contains(PolicyName, `hipaa`) || contains(PolicyName, `pulumi`) || contains(PolicyName, `cloudtrail`) || contains(PolicyName, `ecs`) || contains(PolicyName, `rds`)].Arn' --output text | tr '\t' '\n' | while read policy; do \
+			if [ -n "$policy" ]; then \
+				echo "Deleting policy: $policy"; \
+				AWS_PROFILE=dev-root aws iam delete-policy --policy-arn "$policy" 2>/dev/null || echo "Policy $policy requires manual cleanup"; \
+			fi \
+	done && \
+	echo "✅ Complete staging cleanup finished!" && \
+	echo "📊 Final resource check:" && \
+	AWS_PROFILE=dev-root echo "CloudFormation stacks:" && \
+	AWS_PROFILE=dev-root aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --region us-east-1 --query 'StackSummaries[].StackName' --output table && \
+	AWS_PROFILE=dev-root echo "VPCs:" && \
+	AWS_PROFILE=dev-root aws ec2 describe-vpcs --region us-east-1 --query 'Vpcs[].VpcId' --output table && \
+	AWS_PROFILE=dev-root echo "S3 buckets:" && \
+	AWS_PROFILE=dev-root aws s3 ls --region us-east-1 && \
+	AWS_PROFILE=dev-root echo "KMS keys:" && \
+		AWS_PROFILE=dev-root aws kms list-keys --region us-east-1 --query 'Keys[].KeyId' --output table
 	}
 
 clean-prod-complete: ## Completely remove production (infrastructure + service user)
 	@echo "🚨 PRODUCTION CLEANUP - FINAL WARNING"
 	@echo "This will destroy ALL PRODUCTION resources!"
 	@echo "🔍 Enhanced protection handling will disable load balancer deletion protection, ENI dependencies, and comprehensive cleanup"
+	@echo "🔍 This will automatically handle:"
+	@echo "   • Protected Pulumi resources"
+	@echo "   • Load balancer deletion protection"
+	@echo "   • RDS deletion protection"
+	@echo "   • KMS keys and encryption"
+	@echo "   • VPC and networking components"
+	@echo "   • CloudTrail trails"
+	@echo "   • IAM roles and policies"
+	@echo "   • Empty AND DELETE ALL S3 buckets including CloudTrail"
+	@echo "   • ENI dependencies"
+	@echo "   • Security group dependencies"
+	@echo "   • Force deletion of versioned buckets"
+	@echo "   • Complete account cleanup"
 	@read -p "Enter 'DESTROY ALL PRODUCTION RESOURCES' to proceed: " confirm; \
 	if [ "$$confirm" = "DESTROY ALL PRODUCTION RESOURCES" ]; then \
 		cd lockdev-hippa-iac && { \
-			echo "🔄 Setting up enhanced cleanup scripts..."; \
-			chmod +x enhanced-cleanup.sh scripts/cleanup.sh force-cleanup.sh; \
-			echo "🧹 Running enhanced comprehensive cleanup..."; \
-			./enhanced-cleanup.sh prod --force; \
-		}; \
+			echo "🔄 Setting up comprehensive cleanup scripts..."; \
+			chmod +x comprehensive-cleanup.sh enhanced-cleanup.sh smart-cleanup.sh force-cleanup.sh final-cleanup.sh; \
+			echo "🧹 Running comprehensive cleanup with CloudTrail bucket deletion..."; \
+			AWS_PROFILE=dev-root ./comprehensive-cleanup.sh prod --force && \
+			echo "🗑️  Ensuring complete AWS account cleanup..." && \
+			echo "🔍 Cleaning CloudFormation stacks..." && \
+			AWS_PROFILE=dev-root aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --region us-east-1 --query 'StackSummaries[?contains(StackName, `Holori`)].StackName' --output text | tr '\t' '\n' | while read stack; do \
+				if [ -n "$$stack" ]; then \
+					echo "Deleting stack: $$stack"; \
+					AWS_PROFILE=dev-root aws cloudformation delete-stack --stack-name "$$stack" --region us-east-1; \
+					AWS_PROFILE=dev-root aws cloudformation wait stack-delete-complete --stack-name "$$stack" --region us-east-1 2>/dev/null || echo "Stack $$stack deletion failed"; \
+				fi \
+		done && \
+			echo "🔍 Cleaning CloudTrail trails..." && \
+			AWS_PROFILE=dev-root aws cloudtrail describe-trails --region us-east-1 --query 'trailList[*].Name' --output text | tr '\t' '\n' | grep -E '(hipaa|audit)' | while read trail; do \
+				if [ -n "$$trail" ]; then \
+					echo "Deleting trail: $$trail"; \
+					AWS_PROFILE=dev-root aws cloudtrail delete-trail --name "$$trail" --region us-east-1 2>/dev/null || echo "Trail $$trail could not be deleted"; \
+				fi \
+		done && \
+			echo "🔍 Cleaning KMS keys..." && \
+			AWS_PROFILE=dev-root aws kms list-keys --region us-east-1 --query 'Keys[*].KeyId' --output text | tr '\t' '\n' | while read key; do \
+				if [ -n "$$key" ]; then \
+					echo "Scheduling deletion for key: $$key"; \
+					AWS_PROFILE=dev-root aws kms schedule-key-deletion --key-id "$$key" --pending-window-in-days 7 --region us-east-1 2>/dev/null || echo "Key $$key could not be scheduled for deletion"; \
+				fi \
+		done && \
+			echo "🔍 Cleaning non-default VPCs..." && \
+			AWS_PROFILE=dev-root aws ec2 describe-vpcs --region us-east-1 --query 'Vpcs[?IsDefault==`false`].VpcId' --output text | tr '\t' '\n' | while read vpc; do \
+				if [ -n "$$vpc" ]; then \
+					echo "Cleaning VPC: $$vpc"; \
+					AWS_PROFILE=dev-root aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$$vpc" --query 'InternetGateways[*].InternetGatewayId' --output text | tr '\t' '\n' | while read igw; do \
+						if [ -n "$$igw" ]; then \
+							echo "Detaching and deleting IGW: $$igw"; \
+							AWS_PROFILE=dev-root aws ec2 detach-internet-gateway --internet-gateway-id "$$igw" --vpc-id "$$vpc" --region us-east-1 2>/dev/null || true; \
+							AWS_PROFILE=dev-root aws ec2 delete-internet-gateway --internet-gateway-id "$$igw" --region us-east-1 2>/dev/null || true; \
+						fi \
+					done; \
+					AWS_PROFILE=dev-root aws ec2 describe-subnets --filters "Name=vpc-id,Values=$$vpc" --query 'Subnets[*].SubnetId' --output text | tr '\t' '\n' | while read subnet; do \
+						if [ -n "$$subnet" ]; then \
+							echo "Deleting subnet: $$subnet"; \
+							AWS_PROFILE=dev-root aws ec2 delete-subnet --subnet-id "$$subnet" --region us-east-1 2>/dev/null || true; \
+						fi \
+					done; \
+					echo "Deleting VPC: $$vpc"; \
+					AWS_PROFILE=dev-root aws ec2 delete-vpc --vpc-id "$$vpc" --region us-east-1 2>/dev/null || echo "VPC $$vpc requires manual cleanup"; \
+				fi \
+		done && \
+			echo "🔍 Cleaning remaining S3 buckets..." && \
+			AWS_PROFILE=dev-root aws s3 ls --region us-east-1 | awk '{print $$3}' | grep -E '(hipaa|cloudtrail|config|alb)' | while read bucket; do \
+				if [ -n "$$bucket" ]; then \
+					echo "Force deleting bucket: $$bucket"; \
+					AWS_PROFILE=dev-root aws s3 rm "s3://$$bucket" --recursive --no-cli-pager 2>/dev/null || true; \
+					AWS_PROFILE=dev-root aws s3 rb "s3://$$bucket" --force --no-cli-pager 2>/dev/null || \
+					AWS_PROFILE=dev-root aws s3api delete-bucket --bucket "$$bucket" --no-cli-pager 2>/dev/null || \
+					echo "Bucket $$bucket requires manual cleanup"; \
+				fi \
+		done && \
+			echo "🔍 Cleaning IAM roles..." && \
+			AWS_PROFILE=dev-root aws iam list-roles --query 'Roles[?contains(RoleName, `hipaa`) || contains(RoleName, `pulumi`) || contains(RoleName, `cloudtrail`) || contains(RoleName, `ecs`) || contains(RoleName, `rds`)].RoleName' --output text | tr '\t' '\n' | while read role; do \
+				if [ -n "$$role" ]; then \
+					echo "Deleting role: $$role"; \
+					AWS_PROFILE=dev-root aws iam list-role-policies --role-name "$$role" --query 'PolicyNames' --output text | tr '\t' '\n' | while read policy; do \
+						if [ -n "$$policy" ]; then \
+							echo "Detaching policy: $$policy from role: $$role"; \
+							AWS_PROFILE=dev-root aws iam delete-role-policy --role-name "$$role" --policy-name "$$policy" 2>/dev/null || true; \
+						fi \
+					done; \
+					AWS_PROFILE=dev-root aws iam list-attached-role-policies --role-name "$$role" --query 'AttachedPolicies[*].PolicyArn' --output text | tr '\t' '\n' | while read policy_arn; do \
+						if [ -n "$$policy_arn" ]; then \
+							echo "Detaching attached policy: $$policy_arn from role: $$role"; \
+							AWS_PROFILE=dev-root aws iam detach-role-policy --role-name "$$role" --policy-arn "$$policy_arn" 2>/dev/null || true; \
+						fi \
+					done; \
+					AWS_PROFILE=dev-root aws iam delete-role --role-name "$$role" 2>/dev/null || echo "Role $$role requires manual cleanup"; \
+				fi \
+		done && \
+			echo "🔍 Cleaning IAM policies..." && \
+			AWS_PROFILE=dev-root aws iam list-policies --scope Local --query 'Policies[?contains(PolicyName, `hipaa`) || contains(PolicyName, `pulumi`) || contains(PolicyName, `cloudtrail`) || contains(PolicyName, `ecs`) || contains(PolicyName, `rds`)].Arn' --output text | tr '\t' '\n' | while read policy; do \
+				if [ -n "$$policy" ]; then \
+					echo "Deleting policy: $$policy"; \
+					AWS_PROFILE=dev-root aws iam delete-policy --policy-arn "$$policy" 2>/dev/null || echo "Policy $$policy requires manual cleanup"; \
+				fi \
+		done && \
+		echo "✅ Complete production cleanup finished!" && \
+		echo "📊 Final resource check:" && \
+		AWS_PROFILE=dev-root echo "CloudFormation stacks:" && \
+		AWS_PROFILE=dev-root aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --region us-east-1 --query 'StackSummaries[].StackName' --output table && \
+		AWS_PROFILE=dev-root echo "VPCs:" && \
+		AWS_PROFILE=dev-root aws ec2 describe-vpcs --region us-east-1 --query 'Vpcs[].VpcId' --output table && \
+		AWS_PROFILE=dev-root echo "S3 buckets:" && \
+		AWS_PROFILE=dev-root aws s3 ls --region us-east-1 && \
+		AWS_PROFILE=dev-root echo "KMS keys:" && \
+		AWS_PROFILE=dev-root aws kms list-keys --region us-east-1 --query 'Keys[].KeyId' --output table; \
+	}; \
 	else \
 		echo "Production cleanup cancelled."; \
 	fi
@@ -869,6 +1176,86 @@ deploy-preview: ## Preview infrastructure deployment (legacy)
 
 deploy: ## Deploy infrastructure (legacy)
 	@cd lockdev-hippa-iac && poetry run pulumi up
+
+# =========================================
+# INFRASTRUCTURE VISUALIZATION TARGETS
+# =========================================
+
+setup-diagrams: ## Setup diagram generation dependencies
+	@echo "🚀 Setting up diagram generation dependencies..."
+	@cd lockdev-hippa-iac/scripts && \
+		pip install diagrams graphviz pydot
+	@echo "✅ Diagram dependencies installed!"
+
+check-pulumi-stack: ## Check if active Pulumi stack exists
+	@echo "🔍 Checking for active Pulumi stack..."
+	@cd lockdev-hippa-iac && \
+		if ! pulumi stack ls --json 2>/dev/null | grep -q '"name"'; then \
+			echo "❌ No active Pulumi stack found!"; \
+			echo ""; \
+			echo "📋 To create an active Pulumi stack:"; \
+			echo "   1. make setup-env-dev     # Setup development environment"; \
+			echo "   2. make deploy-dev        # Deploy infrastructure"; \
+			echo "   3. make login-pulumi      # Login to Pulumi (if not logged in)"; \
+			echo ""; \
+			echo "💡 After creating a stack, run: make generate-diagrams"; \
+			exit 1; \
+		else \
+			echo "✅ Active Pulumi stack found"; \
+		fi
+
+generate-diagrams: setup-diagrams ## Generate infrastructure diagrams with interactive stack selection
+	@echo "📊 Starting interactive diagram generation..."
+	@cd lockdev-hippa-iac/scripts && \
+		chmod +x generate_diagrams_interactive.py && \
+		python generate_diagrams_interactive.py
+
+generate-diagrams-stack: setup-diagrams ## Generate diagrams for specific stack (usage: make generate-diagrams-stack STACK=test)
+	@echo "📊 Generating diagrams for stack: $(STACK)"
+	@cd lockdev-hippa-iac/scripts && \
+		chmod +x generate_diagrams_interactive.py && \
+		python generate_diagrams_interactive.py --stack $(STACK) --all
+
+list-diagrams: ## List all generated diagrams
+	@echo "📋 Generated Infrastructure Diagrams:"
+	@echo "======================================"
+	@ls -la lockdev-hippa-iac/scripts/output/*.png 2>/dev/null || echo "❌ No diagrams found. Run 'make generate-diagrams' first."
+	@echo ""
+	@echo "📁 Diagram files:"
+	@find lockdev-hippa-iac/scripts/output -name "*.png" -exec basename {} \; 2>/dev/null || echo "❌ No PNG diagrams found"
+	@find lockdev-hippa-iac/scripts/output -name "*.drawio" -exec basename {} \; 2>/dev/null || echo "❌ No DrawIO diagrams found"
+
+# Helper function to get current stack name
+get-current-stack: ## Get the current Pulumi stack name
+	@cd lockdev-hippa-iac/scripts && python get_current_stack.py
+
+# Set default stack name
+default_stack := $(shell cd lockdev-hippa-iac/scripts && python get_current_stack.py)
+
+# Diagram generation aliases with intelligent stack detection
+generate-network: setup-diagrams ## Generate network architecture diagram (auto-detects stack or use STACK=custom)
+	@echo "📊 Generating network architecture diagram..."
+	@cd lockdev-hippa-iac/scripts && python generate_network_diagram.py --stack $(or $(STACK),$(default_stack))
+
+generate-compute: setup-diagrams ## Generate compute architecture diagram (auto-detects stack or use STACK=custom)
+	@echo "📊 Generating compute architecture diagram..."
+	@cd lockdev-hippa-iac/scripts && python generate_compute_diagram.py --stack $(or $(STACK),$(default_stack))
+
+generate-security: setup-diagrams ## Generate security architecture diagram (auto-detects stack or use STACK=custom)
+	@echo "📊 Generating security architecture diagram..."
+	@cd lockdev-hippa-iac/scripts && python generate_security_diagram.py --stack $(or $(STACK),$(default_stack))
+
+setup-phase6: ## Setup Phase 6 observability diagram generation (deprecated - use setup-diagrams)
+	@echo "⚠️  Deprecated: Use 'make setup-diagrams' instead"
+	@$(MAKE) setup-diagrams
+
+run-phase6: ## Run Phase 6 observability diagram generation (deprecated - use generate-diagrams)
+	@echo "⚠️  Deprecated: Use 'make generate-diagrams' instead"
+	@$(MAKE) generate-diagrams
+
+validate-phase6: ## Validate Phase 6 output (deprecated - use list-diagrams)
+	@echo "⚠️  Deprecated: Use 'make list-diagrams' instead"
+	@$(MAKE) list-diagrams
 
 # =========================================
 # FINAL QUICK COMMANDS

@@ -1,0 +1,76 @@
+<?xml version="1.0" ?>
+<mxfile host="app.diagrams.net" modified="2024-01-01" agent="5.0" etag="hipaa_compute_architecture" version="21.1.2" type="device">
+  <diagram name="HIPAA Compute Architecture" id="compute_arch">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="users" value="Users" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="350" y="50" width="100" height="60"/>
+        </mxCell>
+        <mxCell id="lb_tier" value="Load Balancer Tier" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="150" width="700" height="100"/>
+        </mxCell>
+        <mxCell id="alb" value="ALB
+Application Load Balancer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="lb_tier">
+          <mxGeometry x="50" y="30" width="150" height="50"/>
+        </mxCell>
+        <mxCell id="target_group" value="Target Group
+Health Check: /health" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="lb_tier">
+          <mxGeometry x="220" y="30" width="150" height="50"/>
+        </mxCell>
+        <mxCell id="auto_scaling" value="Auto Scaling
+Min: 2, Max: 10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="280" width="150" height="60"/>
+        </mxCell>
+        <mxCell id="ecs_cluster" value="ECS Fargate Cluster" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="280" width="700" height="150"/>
+        </mxCell>
+        <mxCell id="app_service" value="App Service
+Fargate Tasks
+Desired: 2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="ecs_cluster">
+          <mxGeometry x="50" y="30" width="150" height="50"/>
+        </mxCell>
+        <mxCell id="health_service" value="Health Service
+Sidecar Container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="ecs_cluster">
+          <mxGeometry x="220" y="30" width="150" height="50"/>
+        </mxCell>
+        <mxCell id="registry" value="Container Registry" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="450" width="700" height="100"/>
+        </mxCell>
+        <mxCell id="ecr_repo" value="ECR Repository
+hipaa-app" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="registry">
+          <mxGeometry x="50" y="30" width="150" height="50"/>
+        </mxCell>
+        <mxCell id="image_scanning" value="Image Scanning
+Vulnerability Scans" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="registry">
+          <mxGeometry x="220" y="30" width="150" height="50"/>
+        </mxCell>
+        <mxCell id="support" value="Supporting Services" style="swimlane;horizontal=0;startSize=23;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="570" width="700" height="100"/>
+        </mxCell>
+        <mxCell id="s3_logs" value="S3 Logs
+Application Logs" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="support">
+          <mxGeometry x="50" y="30" width="120" height="50"/>
+        </mxCell>
+        <mxCell id="cloudwatch" value="CloudWatch
+Metrics &amp; Alarms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="support">
+          <mxGeometry x="200" y="30" width="150" height="50"/>
+        </mxCell>
+        <mxCell id="rds" value="RDS PostgreSQL
+Multi-AZ" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="580" y="400" width="100" height="80"/>
+        </mxCell>
+        <mxCell id="edge1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="users" target="alb"/>
+        <mxCell id="edge2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="lb_tier" source="alb" target="target_group"/>
+        <mxCell id="edge3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="target_group" target="app_service"/>
+        <mxCell id="edge4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="auto_scaling" target="app_service"/>
+        <mxCell id="edge5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="app_service" target="ecr_repo"/>
+        <mxCell id="edge6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="registry" source="ecr_repo" target="image_scanning"/>
+        <mxCell id="edge7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="app_service" target="s3_logs"/>
+        <mxCell id="edge8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="app_service" target="cloudwatch"/>
+        <mxCell id="edge9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="app_service" target="rds"/>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

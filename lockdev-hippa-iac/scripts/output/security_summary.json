@@ -1,0 +1,30 @@
+{
+  "compliance_frameworks": [
+    "HIPAA",
+    "HITRUST",
+    "SOC2"
+  ],
+  "encryption_standards": [
+    "TLS 1.2+",
+    "AES-256",
+    "KMS"
+  ],
+  "access_controls": [
+    "IAM Roles with Least Privilege",
+    "Security Groups with Minimal Rules",
+    "Network ACLs for Subnet Isolation",
+    "Secrets Manager for Credentials"
+  ],
+  "monitoring_tools": [
+    "CloudTrail for API Audit",
+    "GuardDuty for Threat Detection",
+    "Config for Compliance Monitoring",
+    "Security Hub for Centralized Security"
+  ],
+  "network_security": [
+    "WAF for Application Protection",
+    "Shield Standard for DDoS",
+    "VPC Isolation",
+    "Private Subnets for Sensitive Resources"
+  ]
+}
