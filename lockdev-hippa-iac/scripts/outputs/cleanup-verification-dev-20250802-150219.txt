@@ -1,0 +1,57 @@
+HIPAA Infrastructure Cleanup Verification Report
+===============================================
+
+Environment: dev
+Verification Date: Sat Aug  2 15:02:20 MDT 2025
+Account: 067518243012
+Region: us-east-1
+
+Summary:
+--------
+PULUMI_STACK_EXISTS: hipaa-dev
+REMAINING_AWS_RESOURCE: Load Balancers: app/hipaa-alb/4a789234020e4d86
+REMAINING_AWS_RESOURCE: ECR Repositories: hipaa-app
+REMAINING_AWS_RESOURCE: CloudWatch Log Groups: /aws/cloudtrail/hipaa-audit-trail	/aws/ecs/hipaa-app	/aws/rds/instance/hipaa-postgres-db/postgresql
+REMAINING_AWS_RESOURCE: Security Groups: sg-0f90873c34684d5bf[1;33m▶ Verifying billing-related resources...[0m
+ACTIVE_BILLING_SERVICE: Active Load Balancers: 1[1;33m▶ Verifying IAM resources...[0m
+REMAINING_IAM_RESOURCE: IAM Roles: hipaa-cloudtrail-role
+REMAINING_IAM_RESOURCE: IAM Policies: hipaa-ecs-task-policy
+REMAINING_IAM_RESOURCE: IAM Users: pulumi-deploy-user-dev
+
+Detailed Resource Check:
+------------------------
+
+[1;33m▶ Verifying AWS resources...[0m
+[0;31m[ERROR][0m Load balancers still exist: app/hipaa-alb/4a789234020e4d86
+[0;31m[ERROR][0m ECR repositories still exist: hipaa-app
+[0;31m[ERROR][0m CloudWatch log groups still exist: /aws/cloudtrail/hipaa-audit-trail	/aws/ecs/hipaa-app	/aws/rds/instance/hipaa-postgres-db/postgresql
+[0;31m[ERROR][0m Security groups still exist: sg-0f90873c34684d5bf
+[0;31m[ERROR][0m Found 4 types of remaining AWS resources
+REMAINING_AWS_RESOURCE: Load Balancers: app/hipaa-alb/4a789234020e4d86
+REMAINING_AWS_RESOURCE: ECR Repositories: hipaa-app
+REMAINING_AWS_RESOURCE: CloudWatch Log Groups: /aws/cloudtrail/hipaa-audit-trail	/aws/ecs/hipaa-app	/aws/rds/instance/hipaa-postgres-db/postgresql
+REMAINING_AWS_RESOURCE: Security Groups: sg-0f90873c34684d5bf
+
+[1;33m▶ Verifying billing-related resources...[0m
+[1;33m[WARNING][0m Found 1 types of active billing resources
+ACTIVE_BILLING_SERVICE: Active Load Balancers: 1
+
+[1;33m▶ Verifying IAM resources...[0m
+[1;33m[WARNING][0m Found 3 types of remaining IAM resources
+REMAINING_IAM_RESOURCE: IAM Roles: hipaa-cloudtrail-role
+hipaa-cloudwatch-role
+hipaa-config-role
+hipaa-ecs-task-execution-role
+hipaa-ecs-task-role
+REMAINING_IAM_RESOURCE: IAM Policies: hipaa-ecs-task-policy
+HIPAAInfrastructurePolicy-dev
+hipaa-cloudtrail-policy
+hipaa-config-s3-policy
+hipaa-cloudwatch-policy
+REMAINING_IAM_RESOURCE: IAM Users: pulumi-deploy-user-dev
+
+[1;33m▶ Verifying Pulumi stacks...[0m
+[0;31m[ERROR][0m Pulumi stack still exists: hipaa-dev
+PULUMI_STACK_EXISTS: hipaa-dev
+[0;34m[INFO][0m Stack outputs: {}
+

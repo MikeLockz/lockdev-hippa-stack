@@ -350,8 +350,18 @@ EOF
     echo ""
     
     # Count remaining resources
-    local remaining_count=$(echo "$verification_results" | grep -c "REMAINING_" || echo 0)
-    local active_count=$(echo "$verification_results" | grep -c "ACTIVE_" || echo 0)
+    local remaining_count=0
+    local active_count=0
+    
+    # Use safer variable handling to avoid interpretation issues
+    if [[ -n "$verification_results" ]]; then
+        remaining_count=$(printf '%s' "$verification_results" | { grep -c "REMAINING_" 2>/dev/null || true; })
+        active_count=$(printf '%s' "$verification_results" | { grep -c "ACTIVE_" 2>/dev/null || true; })
+        
+        # Ensure we have valid numbers
+        [[ "$remaining_count" =~ ^[0-9]+$ ]] || remaining_count=0
+        [[ "$active_count" =~ ^[0-9]+$ ]] || active_count=0
+    fi
     
     if [[ $remaining_count -eq 0 ]] && [[ $active_count -eq 0 ]]; then
         log_success "✅ CLEANUP VERIFICATION PASSED - All resources successfully cleaned up"

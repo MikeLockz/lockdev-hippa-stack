@@ -151,16 +151,17 @@ cleanup_security_groups() {
     
     # Find VPCs first to get security groups
     local vpcs=$(AWS_PROFILE="$root_profile" aws ec2 describe-vpcs \
-        --filters "Name=tag:Name,Values=*hipaa*" \
+        --filters "Name=tag:Name,Values=*hipaa*,*pulumi*,*$environment*" \
         --query 'Vpcs[].VpcId' --output text 2>/dev/null || echo "")
     
+    local sgs
     if [[ -z "$vpcs" ]]; then
-        # Fallback to any VPCs with HIPAA naming in security groups
-        local sgs=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
-            --query 'SecurityGroups[?contains(GroupName, `hipaa`) || contains(GroupName, `'$environment'`)]' \
+        # Fallback to any security groups with relevant naming
+        sgs=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
+            --query 'SecurityGroups[?contains(GroupName, `hipaa`) || contains(GroupName, `'$environment'`) || contains(GroupName, `pulumi`) || contains(GroupName, `ecs`) || contains(GroupName, `alb`) || contains(GroupName, `rds`)]' \
             --output json 2>/dev/null || echo "[]")
     else
-        local sgs=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
+        sgs=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
             --filters "Name=vpc-id,Values=$vpcs" \
             --query 'SecurityGroups[?GroupName!=`default`]' \
             --output json 2>/dev/null || echo "[]")
@@ -171,23 +172,109 @@ cleanup_security_groups() {
         return 0
     fi
     
-    # Sort security groups by dependency (reverse order to delete dependents first)
+    # First pass: Remove all rules to resolve dependencies
+    log_info "Removing security group rules to resolve dependencies..."
     echo "$sgs" | jq -r '.[].GroupId' | while read -r sg_id; do
-        log_info "Deleting security group: $sg_id"
-        
-        # Remove all ingress and egress rules first
-        AWS_PROFILE="$root_profile" aws ec2 revoke-security-group-ingress \
-            --group-id "$sg_id" --protocol all --port all --source-group "$sg_id" \
-            --no-cli-pager 2>/dev/null || true
-        
-        AWS_PROFILE="$root_profile" aws ec2 revoke-security-group-egress \
-            --group-id "$sg_id" --protocol all --port all --cidr 0.0.0.0/0 \
-            --no-cli-pager 2>/dev/null || true
-        
-        # Delete the security group
-        AWS_PROFILE="$root_profile" aws ec2 delete-security-group \
-            --group-id "$sg_id" --no-cli-pager 2>/dev/null || true
+        if [[ -n "$sg_id" ]]; then
+            local sg_name=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
+                --group-ids "$sg_id" --query 'SecurityGroups[0].GroupName' \
+                --output text 2>/dev/null || echo "unknown")
+            
+            log_info "Removing rules from security group: $sg_name ($sg_id)"
+            
+            # Get current ingress rules
+            local ingress_rules=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
+                --group-ids "$sg_id" --query 'SecurityGroups[0].IpPermissions' \
+                --output json 2>/dev/null || echo "[]")
+            
+            # Remove ingress rules
+            if [[ "$ingress_rules" != "[]" ]] && [[ "$ingress_rules" != "null" ]]; then
+                AWS_PROFILE="$root_profile" aws ec2 revoke-security-group-ingress \
+                    --group-id "$sg_id" --ip-permissions "$ingress_rules" \
+                    --no-cli-pager 2>/dev/null || true
+            fi
+            
+            # Get current egress rules
+            local egress_rules=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
+                --group-ids "$sg_id" --query 'SecurityGroups[0].IpPermissionsEgress' \
+                --output json 2>/dev/null || echo "[]")
+            
+            # Remove egress rules (keep only if it's not the default allow-all rule)
+            if [[ "$egress_rules" != "[]" ]] && [[ "$egress_rules" != "null" ]]; then
+                # Filter out the default 0.0.0.0/0 rule to avoid errors
+                local filtered_egress=$(echo "$egress_rules" | jq '[.[] | select(.IpRanges | length == 0 or (.IpRanges[] | .CidrIp != "0.0.0.0/0"))]')
+                if [[ "$filtered_egress" != "[]" ]] && [[ "$filtered_egress" != "null" ]]; then
+                    AWS_PROFILE="$root_profile" aws ec2 revoke-security-group-egress \
+                        --group-id "$sg_id" --ip-permissions "$filtered_egress" \
+                        --no-cli-pager 2>/dev/null || true
+                fi
+            fi
+        fi
     done
+    
+    # Wait a moment for AWS to process the rule changes
+    log_info "Waiting for rule changes to propagate..."
+    sleep 10
+    
+    # Second pass: Delete security groups
+    log_info "Deleting security groups..."
+    echo "$sgs" | jq -r '.[].GroupId' | while read -r sg_id; do
+        if [[ -n "$sg_id" ]]; then
+            local sg_name=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
+                --group-ids "$sg_id" --query 'SecurityGroups[0].GroupName' \
+                --output text 2>/dev/null || echo "unknown")
+            
+            log_info "Deleting security group: $sg_name ($sg_id)"
+            
+            # Delete the security group with retries
+            local attempts=0
+            local max_attempts=5
+            while [[ $attempts -lt $max_attempts ]]; do
+                if AWS_PROFILE="$root_profile" aws ec2 delete-security-group \
+                    --group-id "$sg_id" --no-cli-pager 2>/dev/null; then
+                    log_info "Successfully deleted security group: $sg_name"
+                    break
+                else
+                    attempts=$((attempts + 1))
+                    if [[ $attempts -lt $max_attempts ]]; then
+                        log_info "Failed to delete security group $sg_name, retrying in 10 seconds... (attempt $attempts/$max_attempts)"
+                        sleep 10
+                    else
+                        log_warning "Failed to delete security group $sg_name after $max_attempts attempts"
+                    fi
+                fi
+            done
+        fi
+    done
+    
+    # Third pass: Verify cleanup and handle any remaining groups
+    log_info "Verifying security group cleanup..."
+    local remaining_sgs
+    if [[ -n "$vpcs" ]]; then
+        remaining_sgs=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
+            --filters "Name=vpc-id,Values=$vpcs" \
+            --query 'SecurityGroups[?GroupName!=`default`]' \
+            --output json 2>/dev/null || echo "[]")
+    else
+        remaining_sgs=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
+            --query 'SecurityGroups[?contains(GroupName, `hipaa`) || contains(GroupName, `'$environment'`) || contains(GroupName, `pulumi`) || contains(GroupName, `ecs`) || contains(GroupName, `alb`) || contains(GroupName, `rds`)]' \
+            --output json 2>/dev/null || echo "[]")
+    fi
+    
+    if [[ "$remaining_sgs" != "[]" ]]; then
+        local count=$(echo "$remaining_sgs" | jq length)
+        log_warning "$count security groups could not be deleted, likely due to dependencies"
+        echo "$remaining_sgs" | jq -r '.[].GroupId' | while read -r sg_id; do
+            if [[ -n "$sg_id" ]]; then
+                local sg_name=$(AWS_PROFILE="$root_profile" aws ec2 describe-security-groups \
+                    --group-ids "$sg_id" --query 'SecurityGroups[0].GroupName' \
+                    --output text 2>/dev/null || echo "unknown")
+                log_warning "Remaining security group: $sg_name ($sg_id)"
+            fi
+        done
+    else
+        log_info "All security groups successfully cleaned up"
+    fi
 }
 
 # Cleanup subnets
@@ -196,10 +283,19 @@ cleanup_subnets() {
     
     log_step "Cleaning up subnets..."
     
-    # Find subnets with HIPAA naming
-    local subnets=$(AWS_PROFILE="$root_profile" aws ec2 describe-subnets \
-        --query 'Subnets[?contains(Tags[?Key==`Name`].Value, `hipaa`) || contains(Tags[?Key==`Name`].Value, `'$environment'`)]' \
-        --output json 2>/dev/null || echo "[]")
+    # Find subnets in HIPAA VPCs (get VPCs first, then their subnets)
+    local hipaa_vpcs=$(AWS_PROFILE="$root_profile" aws ec2 describe-vpcs \
+        --filters "Name=tag:Name,Values=*hipaa*,*HIPAA*" \
+        --query 'Vpcs[].VpcId' --output text 2>/dev/null || echo "")
+    
+    local subnets="[]"
+    if [[ -n "$hipaa_vpcs" ]]; then
+        # Convert space-separated VPC IDs to comma-separated for AWS CLI
+        local vpc_list=$(echo "$hipaa_vpcs" | tr ' ' ',')
+        subnets=$(AWS_PROFILE="$root_profile" aws ec2 describe-subnets \
+            --filters "Name=vpc-id,Values=$vpc_list" \
+            --query 'Subnets[]' --output json 2>/dev/null || echo "[]")
+    fi
     
     if [[ "$subnets" == "[]" ]]; then
         log_info "No subnets found"
@@ -219,32 +315,128 @@ cleanup_route_tables() {
     
     log_step "Cleaning up route tables..."
     
-    # Find route tables with HIPAA naming
-    local route_tables=$(AWS_PROFILE="$root_profile" aws ec2 describe-route-tables \
-        --query 'RouteTables[?contains(Tags[?Key==`Name`].Value, `hipaa`) || contains(Tags[?Key==`Name`].Value, `'$environment'`)]' \
-        --output json 2>/dev/null || echo "[]")
+    # Find route tables in HIPAA VPCs and any orphaned route tables with blackhole routes
+    local hipaa_vpcs=$(AWS_PROFILE="$root_profile" aws ec2 describe-vpcs \
+        --filters "Name=tag:Name,Values=*hipaa*,*HIPAA*" \
+        --query 'Vpcs[].VpcId' --output text 2>/dev/null || echo "")
+    
+    # Also find VPCs by direct ID matching our known problem VPCs
+    local known_vpcs="vpc-0d12efa2260d63acf vpc-0cb84f5b3af83f2bb"
+    local all_vpcs="$hipaa_vpcs $known_vpcs"
+    
+    local route_tables="[]"
+    if [[ -n "$all_vpcs" ]]; then
+        # Remove duplicates and create comma-separated list
+        local vpc_list=$(echo "$all_vpcs" | tr ' ' '\n' | sort -u | tr '\n' ',' | sed 's/,$//')
+        route_tables=$(AWS_PROFILE="$root_profile" aws ec2 describe-route-tables \
+            --filters "Name=vpc-id,Values=$vpc_list" \
+            --query 'RouteTables[]' --output json 2>/dev/null || echo "[]")
+    fi
     
     if [[ "$route_tables" == "[]" ]]; then
         log_info "No route tables found"
         return 0
     fi
     
+    # First pass: Remove problematic routes (blackhole routes to deleted IGWs)
+    log_info "Removing problematic routes from route tables..."
     echo "$route_tables" | jq -r '.[].RouteTableId' | while read -r rt_id; do
-        log_info "Deleting route table: $rt_id"
+        if [[ -z "$rt_id" ]]; then continue; fi
+        
+        log_info "Checking route table for problematic routes: $rt_id"
+        
+        # Get routes for this route table
+        local routes=$(AWS_PROFILE="$root_profile" aws ec2 describe-route-tables \
+            --route-table-ids "$rt_id" \
+            --query 'RouteTables[0].Routes[]' --output json 2>/dev/null || echo "[]")
+        
+        if [[ "$routes" != "[]" ]]; then
+            # Look for blackhole routes or routes to non-existent gateways
+            echo "$routes" | jq -c '.[]' | while IFS= read -r route; do
+                local state=$(echo "$route" | jq -r '.State // "active"')
+                local gateway_id=$(echo "$route" | jq -r '.GatewayId // "none"')
+                local dest_cidr=$(echo "$route" | jq -r '.DestinationCidrBlock // "none"')
+                
+                if [[ "$state" == "blackhole" ]] || [[ "$gateway_id" =~ ^igw-.* ]]; then
+                    log_info "Found problematic route in $rt_id: $dest_cidr -> $gateway_id (state: $state)"
+                    
+                    # Try to delete the problematic route
+                    if [[ "$dest_cidr" != "none" ]] && [[ "$dest_cidr" != "local" ]]; then
+                        log_info "Removing route $dest_cidr from route table $rt_id"
+                        AWS_PROFILE="$root_profile" aws ec2 delete-route \
+                            --route-table-id "$rt_id" \
+                            --destination-cidr-block "$dest_cidr" \
+                            --no-cli-pager 2>/dev/null || true
+                    fi
+                fi
+            done
+        fi
+    done
+    
+    # Wait for route deletions to propagate
+    log_info "Waiting for route deletions to propagate..."
+    sleep 5
+    
+    # Second pass: Delete non-main route tables
+    log_info "Deleting custom route tables..."
+    echo "$route_tables" | jq -r '.[].RouteTableId' | while read -r rt_id; do
+        if [[ -z "$rt_id" ]]; then continue; fi
+        
+        log_info "Processing route table: $rt_id"
         
         # Check if this is a main route table
-        local is_main=$(AWS_PROFILE="$root_profile" aws ec2 describe-route-tables \
+        local associations=$(AWS_PROFILE="$root_profile" aws ec2 describe-route-tables \
             --route-table-ids "$rt_id" \
-            --query 'RouteTables[0].Associations[0].Main' \
-            --output text 2>/dev/null || echo "false")
+            --query 'RouteTables[0].Associations[]' --output json 2>/dev/null || echo "[]")
+        
+        local is_main="false"
+        if [[ "$associations" != "[]" ]]; then
+            is_main=$(echo "$associations" | jq -r 'map(.Main) | any')
+        fi
         
         if [[ "$is_main" != "true" ]]; then
+            log_info "Deleting custom route table: $rt_id"
+            
+            # Disassociate any subnet associations first
+            if [[ "$associations" != "[]" ]]; then
+                echo "$associations" | jq -r '.[] | select(.SubnetId != null) | .RouteTableAssociationId' | while read -r assoc_id; do
+                    if [[ -n "$assoc_id" ]] && [[ "$assoc_id" != "null" ]]; then
+                        log_info "Disassociating route table $rt_id from subnet (association: $assoc_id)"
+                        AWS_PROFILE="$root_profile" aws ec2 disassociate-route-table \
+                            --association-id "$assoc_id" --no-cli-pager 2>/dev/null || true
+                    fi
+                done
+            fi
+            
+            # Now delete the route table
             AWS_PROFILE="$root_profile" aws ec2 delete-route-table \
                 --route-table-id "$rt_id" --no-cli-pager 2>/dev/null || true
         else
             log_info "Skipping main route table: $rt_id"
         fi
     done
+    
+    # Third pass: Verify cleanup
+    log_info "Verifying route table cleanup..."
+    local remaining_tables="[]"
+    if [[ -n "$all_vpcs" ]]; then
+        local vpc_list=$(echo "$all_vpcs" | tr ' ' '\n' | sort -u | tr '\n' ',' | sed 's/,$//')
+        remaining_tables=$(AWS_PROFILE="$root_profile" aws ec2 describe-route-tables \
+            --filters "Name=vpc-id,Values=$vpc_list" \
+            --query 'RouteTables[? !Associations[0].Main]' --output json 2>/dev/null || echo "[]")
+    fi
+    
+    if [[ "$remaining_tables" != "[]" ]]; then
+        local count=$(echo "$remaining_tables" | jq length)
+        log_warning "$count custom route tables could not be deleted"
+        echo "$remaining_tables" | jq -r '.[].RouteTableId' | while read -r rt_id; do
+            if [[ -n "$rt_id" ]]; then
+                log_warning "Remaining route table: $rt_id"
+            fi
+        done
+    else
+        log_info "All custom route tables successfully cleaned up"
+    fi
 }
 
 # Cleanup internet gateways
@@ -253,10 +445,26 @@ cleanup_internet_gateways() {
     
     log_step "Cleaning up internet gateways..."
     
-    # Find internet gateways with HIPAA naming
-    local igws=$(AWS_PROFILE="$root_profile" aws ec2 describe-internet-gateways \
-        --query 'InternetGateways[?contains(Tags[?Key==`Name`].Value, `hipaa`) || contains(Tags[?Key==`Name`].Value, `'$environment'`)]' \
-        --output json 2>/dev/null || echo "[]")
+    # Find internet gateways attached to HIPAA VPCs
+    local hipaa_vpcs=$(AWS_PROFILE="$root_profile" aws ec2 describe-vpcs \
+        --filters "Name=tag:Name,Values=*hipaa*,*HIPAA*" \
+        --query 'Vpcs[].VpcId' --output text 2>/dev/null || echo "")
+    
+    local igws="[]"
+    if [[ -n "$hipaa_vpcs" ]]; then
+        for vpc_id in $hipaa_vpcs; do
+            local vpc_igws=$(AWS_PROFILE="$root_profile" aws ec2 describe-internet-gateways \
+                --filters "Name=attachment.vpc-id,Values=$vpc_id" \
+                --query 'InternetGateways[]' --output json 2>/dev/null || echo "[]")
+            if [[ "$vpc_igws" != "[]" ]]; then
+                if [[ "$igws" == "[]" ]]; then
+                    igws="$vpc_igws"
+                else
+                    igws=$(echo "$igws $vpc_igws" | jq -s 'add')
+                fi
+            fi
+        done
+    fi
     
     if [[ "$igws" == "[]" ]]; then
         log_info "No internet gateways found"
@@ -361,9 +569,9 @@ cleanup_vpc_dhcp_options() {
     
     log_step "Cleaning up VPC DHCP options..."
     
-    # Find VPCs with HIPAA naming
+    # Find VPCs with HIPAA naming (case insensitive)
     local vpcs=$(AWS_PROFILE="$root_profile" aws ec2 describe-vpcs \
-        --filters "Name=tag:Name,Values=*hipaa*" \
+        --filters "Name=tag:Name,Values=*hipaa*,*HIPAA*" \
         --query 'Vpcs[]' --output json 2>/dev/null || echo "[]")
     
     if [[ "$vpcs" == "[]" ]]; then
@@ -401,9 +609,9 @@ cleanup_vpcs() {
     
     log_step "Cleaning up VPCs..."
     
-    # Find VPCs with HIPAA naming
+    # Find VPCs with HIPAA naming (case insensitive)
     local vpcs=$(AWS_PROFILE="$root_profile" aws ec2 describe-vpcs \
-        --filters "Name=tag:Name,Values=*hipaa*" \
+        --filters "Name=tag:Name,Values=*hipaa*,*HIPAA*" \
         --query 'Vpcs[]' --output json 2>/dev/null || echo "[]")
     
     if [[ "$vpcs" == "[]" ]]; then
