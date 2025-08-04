@@ -1,0 +1,13 @@
+{
+    "environment": "dev",
+    "timestamp": "2025-08-03T17:45:58Z",
+    "account": "067518243012",
+    "region": "us-east-1",
+    "resources": {
+        "vpcs": "",
+        "rds_instances": "",
+        "s3_buckets": "hipaa-alb-logs-dev-067518243012	hipaa-cloudtrail-logs-dev-067518243012	hipaa-config-bucket-dev-067518243012",
+        "ecs_clusters": "arn:aws:ecs:us-east-1:067518243012:cluster/hipaa-ecs-cluster",
+        "load_balancers": ""
+    }
+}

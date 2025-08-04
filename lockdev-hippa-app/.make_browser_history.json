@@ -1,0 +1,79 @@
+[
+  {
+    "command": "deploy-preview",
+    "timestamp": "2025-08-03T11:32:39.137210",
+    "success": false,
+    "duration": 3.2872977256774902,
+    "platform": "Darwin"
+  },
+  {
+    "command": "deploy-dev",
+    "timestamp": "2025-08-03T11:33:26.845636",
+    "success": false,
+    "duration": 37.10215783119202,
+    "platform": "Darwin"
+  },
+  {
+    "command": "deploy-dev",
+    "timestamp": "2025-08-03T11:37:30.852236",
+    "success": false,
+    "duration": 18.660640954971313,
+    "platform": "Darwin"
+  },
+  {
+    "command": "cleanup-dev",
+    "timestamp": "2025-08-03T11:48:19.546702",
+    "success": false,
+    "duration": 147.68765687942505,
+    "platform": "Darwin"
+  },
+  {
+    "command": "check-pulumi-stack",
+    "timestamp": "2025-08-03T20:43:22.479467",
+    "success": true,
+    "duration": 1.3358371257781982,
+    "platform": "Darwin"
+  },
+  {
+    "command": "get-current-stack",
+    "timestamp": "2025-08-03T20:43:42.939362",
+    "success": true,
+    "duration": 1.4527359008789062,
+    "platform": "Darwin"
+  },
+  {
+    "command": "status",
+    "timestamp": "2025-08-03T20:44:35.818241",
+    "success": true,
+    "duration": 2.0012669563293457,
+    "platform": "Darwin"
+  },
+  {
+    "command": "cleanup-dev",
+    "timestamp": "2025-08-03T20:46:13.326521",
+    "success": false,
+    "duration": 62.83933687210083,
+    "platform": "Darwin"
+  },
+  {
+    "command": "list-aws-resources",
+    "timestamp": "2025-08-03T20:48:51.712575",
+    "success": true,
+    "duration": 13.531248092651367,
+    "platform": "Darwin"
+  },
+  {
+    "command": "list-aws-resources",
+    "timestamp": "2025-08-03T21:37:38.560855",
+    "success": true,
+    "duration": 22.261910915374756,
+    "platform": "Darwin"
+  },
+  {
+    "command": "list-aws-resources",
+    "timestamp": "2025-08-03T21:44:22.173917",
+    "success": true,
+    "duration": 16.720706701278687,
+    "platform": "Darwin"
+  }
+]

@@ -134,7 +134,7 @@ EOF
 
 # Test CLI interface
 test_cli_interface() {
-    local main_script="$SCRIPT_DIR/hipaa-cleanup.sh"
+    local main_script="$SCRIPT_DIR/destroy-aws-resources.sh"
     
     if [[ ! -f "$main_script" ]]; then
         echo "Main script not found: $main_script"
@@ -152,7 +152,7 @@ test_cli_interface() {
 
 # Test dry-run functionality
 test_dry_run() {
-    local main_script="$SCRIPT_DIR/hipaa-cleanup.sh"
+    local main_script="$SCRIPT_DIR/destroy-aws-resources.sh"
     
     # Test dry-run with non-existent environment
     local output=$("$main_script" nonexistent --dry-run 2>&1 || echo "")
@@ -277,7 +277,7 @@ test_phase_order() {
     local actual_order=()
     
     # Read phase order from main script
-    local main_script="$SCRIPT_DIR/hipaa-cleanup.sh"
+    local main_script="$SCRIPT_DIR/destroy-aws-resources.sh"
     if [[ -f "$main_script" ]]; then
         local phases=$(grep -o 'PHASES=.*' "$main_script" | head -1)
         if [[ -n "$phases" ]]; then

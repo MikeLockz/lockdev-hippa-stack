@@ -9,7 +9,7 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ERRORS=0
 
 for script in \
-    "$SCRIPTS_DIR/hipaa-cleanup.sh" \
+    "$SCRIPTS_DIR/destroy-aws-resources.sh" \
     "$SCRIPTS_DIR/lib/utils.sh" \
     "$SCRIPTS_DIR/phases/phase-prepare.sh" \
     "$SCRIPTS_DIR/phases/phase-data.sh" \

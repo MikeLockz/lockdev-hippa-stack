@@ -188,26 +188,48 @@ clear_cloudtrail_logs() {
     
     log_step "Clearing CloudTrail logs..."
     
-    # Find CloudTrail log groups
+    # First, find and delete CloudTrail trails
+    local trails=$(AWS_PROFILE="$root_profile" aws cloudtrail describe-trails \
+        --query 'trailList[?contains(Name, `hipaa`) || contains(Name, `'$environment'`)]' \
+        --output json 2>/dev/null || echo "[]")
+    
+    if [[ "$trails" != "[]" ]]; then
+        echo "$trails" | jq -r '.[].Name' | while read -r trail_name; do
+            if [[ -n "$trail_name" ]]; then
+                log_info "Deleting CloudTrail trail: $trail_name"
+                
+                # Stop logging first
+                AWS_PROFILE="$root_profile" aws cloudtrail stop-logging --name "$trail_name" --no-cli-pager 2>/dev/null || true
+                
+                # Delete the trail
+                AWS_PROFILE="$root_profile" aws cloudtrail delete-trail --name "$trail_name" --no-cli-pager 2>/dev/null || true
+                
+                log_info "CloudTrail trail deleted: $trail_name"
+            fi
+        done
+    else
+        log_info "No CloudTrail trails found"
+    fi
+    
+    # Then, find and delete CloudTrail log groups
     local log_groups=$(AWS_PROFILE="$root_profile" aws logs describe-log-groups \
         --query 'logGroups[?contains(logGroupName, `hipaa`) || contains(logGroupName, `cloudtrail`)]' \
         --output json 2>/dev/null || echo "[]")
     
-    if [[ "$log_groups" == "[]" ]]; then
+    if [[ "$log_groups" != "[]" ]]; then
+        echo "$log_groups" | jq -r '.[].logGroupName' | while read -r log_group; do
+            if [[ -n "$log_group" ]]; then
+                log_info "Clearing log group: $log_group"
+                
+                # Delete the log group
+                AWS_PROFILE="$root_profile" aws logs delete-log-group --log-group-name "$log_group" --no-cli-pager 2>/dev/null || true
+                
+                log_info "CloudTrail log group cleared: $log_group"
+            fi
+        done
+    else
         log_info "No CloudTrail log groups found"
-        return 0
     fi
-    
-    echo "$log_groups" | jq -r '.[].logGroupName' | while read -r log_group; do
-        if [[ -n "$log_group" ]]; then
-            log_info "Clearing log group: $log_group"
-            
-            # Delete the log group
-            AWS_PROFILE="$root_profile" aws logs delete-log-group --log-group-name "$log_group" --no-cli-pager 2>/dev/null || true
-            
-            log_info "CloudTrail log group cleared: $log_group"
-        fi
-    done
 }
 
 # Hook function for phase execution

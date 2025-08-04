@@ -1,0 +1,13 @@
+{
+    "environment": "dev",
+    "timestamp": "2025-08-04T02:51:31Z",
+    "account": "067518243012",
+    "region": "us-east-1",
+    "resources": {
+        "vpcs": "",
+        "rds_instances": "",
+        "s3_buckets": "",
+        "ecs_clusters": "",
+        "load_balancers": ""
+    }
+}

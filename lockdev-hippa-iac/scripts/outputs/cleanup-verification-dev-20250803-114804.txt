@@ -1,0 +1,35 @@
+HIPAA Infrastructure Cleanup Verification Report
+===============================================
+
+Environment: dev
+Verification Date: Sun Aug  3 11:48:04 MDT 2025
+Account: 067518243012
+Region: us-east-1
+
+Summary:
+--------
+PULUMI_STACK_EXISTS: hipaa-dev
+AWS_RESOURCES_CLEANED: true[1;33m▶ Verifying billing-related resources...[0m
+BILLING_RESOURCES_CLEANED: true[1;33m▶ Verifying IAM resources...[0m
+IAM_RESOURCES_CLEANED: true
+
+Detailed Resource Check:
+------------------------
+
+[1;33m▶ Verifying AWS resources...[0m
+[0;32m[SUCCESS][0m All AWS resources have been successfully cleaned up
+AWS_RESOURCES_CLEANED: true
+
+[1;33m▶ Verifying billing-related resources...[0m
+[0;32m[SUCCESS][0m No active billing resources found
+BILLING_RESOURCES_CLEANED: true
+
+[1;33m▶ Verifying IAM resources...[0m
+[0;32m[SUCCESS][0m No HIPAA-related IAM resources found
+IAM_RESOURCES_CLEANED: true
+
+[1;33m▶ Verifying Pulumi stacks...[0m
+[0;31m[ERROR][0m Pulumi stack still exists: hipaa-dev
+PULUMI_STACK_EXISTS: hipaa-dev
+[0;34m[INFO][0m Stack outputs: {}
+
